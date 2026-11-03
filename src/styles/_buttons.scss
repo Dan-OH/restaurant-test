@@ -20,39 +20,4 @@
     opacity: 0.6;
     cursor: default;
   }
-
-  &.secondary {
-    background: transparent;
-    color: $text;
-    border-color: $border;
-
-    &:hover {
-      background: $hover-bg;
-    }
-  }
-
-  &.danger {
-    background: transparent;
-    color: $danger;
-    border-color: #f1c6c1;
-
-    &:hover {
-      background: #fdf0ee;
-    }
-  }
-
-  // Secondary button for dark backgrounds (admin bar, image controls).
-  &.secondary.on-dark {
-    color: #fff;
-    border-color: rgba(255, 255, 255, 0.35);
-
-    &:hover {
-      background: rgba(255, 255, 255, 0.1);
-    }
-  }
-
-  &.small {
-    padding: 0.3rem 0.7rem;
-    font-size: 0.875rem;
-  }
 }

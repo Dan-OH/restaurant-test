@@ -7,6 +7,7 @@ export function SiteProvider({ children }) {
   const { session } = useAuth()
   const [editingFlag, setEditing] = useState(false)
   const [content, setContent] = useState(null)
+  const [media, setMedia] = useState(null) // { [id]: row }
   const [status, setStatus] = useState('idle')
   const [statusError, setStatusError] = useState(null)
   const pending = useRef(0)
@@ -21,6 +22,13 @@ export function SiteProvider({ children }) {
       .catch((e) => {
         console.error('Could not load site content, using defaults:', e.message)
         setContent({})
+      })
+    api
+      .fetchMedia()
+      .then((rows) => setMedia(Object.fromEntries(rows.map((m) => [m.id, m]))))
+      .catch((e) => {
+        console.error('Could not load media library:', e.message)
+        setMedia({})
       })
   }, [])
 
@@ -40,6 +48,8 @@ export function SiteProvider({ children }) {
       throw e
     }
   }, [])
+
+  // ---- Page text ----
 
   const getText = useCallback(
     (key, fallback) => (content && key in content ? content[key] : fallback),
@@ -71,13 +81,76 @@ export function SiteProvider({ children }) {
 
   const saveText = useCallback((key, value) => saveTexts({ [key]: value }), [saveTexts])
 
-  const value = useMemo(
-    () => ({ editing, setEditing, getText, saveText, saveTexts, track, status, statusError }),
-    [editing, getText, saveText, saveTexts, track, status, statusError],
+  // ---- Media library ----
+
+  const getMedia = useCallback((id) => (id && media?.[id]) || null, [media])
+
+  const addMedia = useCallback(
+    async (row) => {
+      const created = await track(() => api.createMedia(row))
+      setMedia((m) => ({ ...m, [created.id]: created }))
+      return created
+    },
+    [track],
   )
 
-  // Wait for saved text before rendering so visitors never see defaults flash first.
-  if (content === null) return null
+  const updateMedia = useCallback(
+    async (id, patch) => {
+      const updated = await track(() => api.updateMedia(id, patch))
+      setMedia((m) => ({ ...m, [id]: updated }))
+      return updated
+    },
+    [track],
+  )
+
+  const removeMedia = useCallback(
+    async (id) => {
+      await track(() => api.deleteMedia(id))
+      setMedia((m) => {
+        const next = { ...m }
+        delete next[id]
+        return next
+      })
+    },
+    [track],
+  )
+
+  const value = useMemo(
+    () => ({
+      editing,
+      setEditing,
+      content,
+      getText,
+      saveText,
+      saveTexts,
+      media,
+      getMedia,
+      addMedia,
+      updateMedia,
+      removeMedia,
+      track,
+      status,
+      statusError,
+    }),
+    [
+      editing,
+      content,
+      getText,
+      saveText,
+      saveTexts,
+      media,
+      getMedia,
+      addMedia,
+      updateMedia,
+      removeMedia,
+      track,
+      status,
+      statusError,
+    ],
+  )
+
+  // Wait for saved content before rendering so visitors never see defaults flash first.
+  if (content === null || media === null) return null
 
   return <SiteContext.Provider value={value}>{children}</SiteContext.Provider>
 }

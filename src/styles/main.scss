@@ -1,11 +1,7 @@
+// Public site styles. Admin UI (admin bar, editors, dashboard) uses MUI; see src/admin/.
 @use 'base';
 @use 'layout';
 @use 'buttons';
-@use 'forms';
 @use 'editable';
-@use 'cropper';
-@use 'admin-bar';
 @use 'home';
 @use 'menu';
-@use 'menu-editor';
-@use 'dashboard';

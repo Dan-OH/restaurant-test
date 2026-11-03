@@ -116,3 +116,77 @@ create policy "Authenticated update site images" on storage.objects
 drop policy if exists "Authenticated delete site images" on storage.objects;
 create policy "Authenticated delete site images" on storage.objects
   for delete to authenticated using (bucket_id = 'site-images');
+
+-- ---------------------------------------------------------------------------
+-- Media library. One row per image. Placements on the site (site_content keys
+-- like 'home.hero.image') store the media id, so editing an image here updates
+-- it everywhere it's used.
+--   path           the optimized/cropped file visitors see
+--   original_path  the uncropped original, so crops can be redone without quality loss
+--   settings       { aspect, area, width, format, quality } used to render `path`
+-- ---------------------------------------------------------------------------
+create table if not exists public.media (
+  id              uuid primary key default gen_random_uuid(),
+  name            text not null default '',
+  path            text not null,
+  original_path   text,
+  settings        jsonb,
+  alt             text not null default '',
+  width           integer,
+  height          integer,
+  size            integer,
+  mime_type       text,
+  original_width  integer,
+  original_height integer,
+  original_size   integer,
+  created_at      timestamptz not null default now(),
+  updated_at      timestamptz not null default now()
+);
+
+alter table public.media enable row level security;
+
+drop policy if exists "Public read media" on public.media;
+create policy "Public read media" on public.media
+  for select using (true);
+
+drop policy if exists "Authenticated write media" on public.media;
+create policy "Authenticated write media" on public.media
+  for all to authenticated using (true) with check (true);
+
+-- One-time migration: images saved before the media library stored a storage path
+-- (plus .original / .crop / .alt keys) directly in site_content. Move each into a
+-- media row and point the placement at it. Safe to re-run: migrated keys hold ids.
+do $$
+declare
+  r record;
+  new_id uuid;
+begin
+  for r in
+    select c.key,
+           c.value as path,
+           nullif((select value from public.site_content where key = c.key || '.original'), '') as original_path,
+           nullif((select value from public.site_content where key = c.key || '.crop'), '') as crop,
+           coalesce((select value from public.site_content where key = c.key || '.alt'), '') as alt
+      from public.site_content c
+     where c.value <> ''
+       and c.key !~ '\.(original|crop|alt)$'
+       and exists (select 1 from storage.objects o where o.bucket_id = 'site-images' and o.name = c.value)
+  loop
+    insert into public.media (name, path, original_path, settings, alt, size, mime_type, original_size)
+    values (
+      regexp_replace(r.path, '^.*/', ''),
+      r.path,
+      r.original_path,
+      r.crop::jsonb,
+      r.alt,
+      (select (metadata->>'size')::int from storage.objects where bucket_id = 'site-images' and name = r.path),
+      (select metadata->>'mimetype' from storage.objects where bucket_id = 'site-images' and name = r.path),
+      (select (metadata->>'size')::int from storage.objects where bucket_id = 'site-images' and name = r.original_path)
+    )
+    returning id into new_id;
+
+    update public.site_content set value = new_id::text, updated_at = now() where key = r.key;
+    delete from public.site_content where key in (r.key || '.original', r.key || '.crop', r.key || '.alt');
+  end loop;
+end
+$$;

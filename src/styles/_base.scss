@@ -66,9 +66,6 @@ code {
   padding-bottom: 3rem;
 }
 
-.narrow {
-  max-width: 420px;
-}
 
 .muted {
   color: $muted;
@@ -78,22 +75,8 @@ code {
   color: $danger;
 }
 
-.grow {
-  flex: 1;
-  min-width: 0;
-}
 
 .notice {
   padding-top: 4rem;
 }
 
-.card {
-  background: $surface;
-  border: 1px solid $border;
-  border-radius: $radius;
-  padding: 1.25rem;
-}
-
-.success {
-  color: $success;
-}

@@ -1,8 +1,11 @@
+import { lazy, Suspense } from 'react'
 import { Link, NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../lib/useAuth'
 import { useSite } from '../lib/site'
-import AdminBar from './AdminBar.jsx'
 import EditableText from './EditableText.jsx'
+
+// Only logged-in users see the admin bar, so only they download it (and MUI).
+const AdminBar = lazy(() => import('../admin/AdminBar.jsx'))
 
 const YEAR = new Date().getFullYear()
 
@@ -12,7 +15,11 @@ export default function Layout() {
 
   return (
     <>
-      <AdminBar />
+      {session && (
+        <Suspense fallback={null}>
+          <AdminBar />
+        </Suspense>
+      )}
       <header className="site-header">
         <div className="container header-inner">
           <Link to="/" className="brand" onClick={(e) => editing && e.preventDefault()}>
@@ -27,7 +34,9 @@ export default function Layout() {
         </div>
       </header>
       <main>
-        <Outlet />
+        <Suspense fallback={null}>
+          <Outlet />
+        </Suspense>
       </main>
       <footer className="site-footer">
         <div className="container footer-inner">

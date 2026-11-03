@@ -128,3 +128,28 @@ export function imageUrl(path) {
   if (!path) return null
   return supabase.storage.from(IMAGE_BUCKET).getPublicUrl(path).data.publicUrl
 }
+
+// ---- Media library ----
+
+export async function fetchMedia() {
+  return check(await supabase.from('media').select('*').order('created_at', { ascending: false }))
+}
+
+export async function createMedia(row) {
+  return check(await supabase.from('media').insert(row).select().single())
+}
+
+export async function updateMedia(id, patch) {
+  return check(
+    await supabase
+      .from('media')
+      .update({ ...patch, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single(),
+  )
+}
+
+export async function deleteMedia(id) {
+  check(await supabase.from('media').delete().eq('id', id))
+}

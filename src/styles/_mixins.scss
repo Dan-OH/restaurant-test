@@ -5,15 +5,3 @@
     @content;
   }
 }
-
-@mixin focus-ring {
-  outline: 2px solid $accent;
-  outline-offset: -1px;
-  border-color: transparent;
-}
-
-@mixin medium-screen {
-  @media (max-width: $bp-medium) {
-    @content;
-  }
-}

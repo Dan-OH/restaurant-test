@@ -1,13 +1,15 @@
+import { lazy, Suspense } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import Layout from './components/Layout.jsx'
-import RequireAuth from './components/RequireAuth.jsx'
 import Home from './pages/Home.jsx'
 import Menu from './pages/Menu.jsx'
-import Login from './pages/Login.jsx'
-import AdminLayout from './pages/admin/AdminLayout.jsx'
-import SiteSettings from './pages/admin/SiteSettings.jsx'
 import { isConfigured } from './lib/supabase'
 import { SiteProvider } from './lib/SiteProvider.jsx'
+
+// Admin UI (MUI) lives in src/admin and is loaded only when needed,
+// so visitors to the public site never download it.
+const Login = lazy(() => import('./admin/Login.jsx'))
+const AdminDashboard = lazy(() => import('./admin/dashboard/AdminDashboard.jsx'))
 
 export default function App() {
   if (!isConfigured) {
@@ -24,26 +26,19 @@ export default function App() {
 
   return (
     <SiteProvider>
-      <Routes>
-        <Route element={<Layout />}>
-          <Route index element={<Home />} />
-          <Route path="menu" element={<Menu />} />
-          <Route path="login" element={<Login />} />
-        </Route>
+      <Suspense fallback={null}>
+        <Routes>
+          <Route element={<Layout />}>
+            <Route index element={<Home />} />
+            <Route path="menu" element={<Menu />} />
+            <Route path="login" element={<Login />} />
+          </Route>
 
-        <Route
-          path="admin"
-          element={
-            <RequireAuth>
-              <AdminLayout />
-            </RequireAuth>
-          }
-        >
-          <Route index element={<SiteSettings />} />
-        </Route>
+          <Route path="admin/*" element={<AdminDashboard />} />
 
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
     </SiteProvider>
   )
 }
