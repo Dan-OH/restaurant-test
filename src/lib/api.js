@@ -97,12 +97,11 @@ export async function fetchContent() {
   return Object.fromEntries(rows.map((r) => [r.key, r.value]))
 }
 
-export async function saveContent(key, value) {
-  check(
-    await supabase
-      .from('site_content')
-      .upsert({ key, value, updated_at: new Date().toISOString() }),
-  )
+/** Saves one or more keys in a single request: saveContent({ 'home.hero.title': 'Hi' }) */
+export async function saveContent(entries) {
+  const updated_at = new Date().toISOString()
+  const rows = Object.entries(entries).map(([key, value]) => ({ key, value, updated_at }))
+  check(await supabase.from('site_content').upsert(rows))
 }
 
 // ---- Images (Supabase Storage) ----

@@ -46,18 +46,21 @@ export function SiteProvider({ children }) {
     [content],
   )
 
-  const saveText = useCallback(
-    async (key, value) => {
-      const previous = content?.[key]
-      setContent((c) => ({ ...c, [key]: value }))
+  // Saves several keys at once: saveTexts({ key1: 'a', key2: 'b' }).
+  const saveTexts = useCallback(
+    async (entries) => {
+      const previous = Object.fromEntries(Object.keys(entries).map((k) => [k, content?.[k]]))
+      setContent((c) => ({ ...c, ...entries }))
       try {
-        await track(() => api.saveContent(key, value))
+        await track(() => api.saveContent(entries))
       } catch (e) {
         // Roll back so the page shows what's actually stored, then let the caller know.
         setContent((c) => {
           const next = { ...c }
-          if (previous === undefined) delete next[key]
-          else next[key] = previous
+          for (const [k, v] of Object.entries(previous)) {
+            if (v === undefined) delete next[k]
+            else next[k] = v
+          }
           return next
         })
         throw e
@@ -66,9 +69,11 @@ export function SiteProvider({ children }) {
     [content, track],
   )
 
+  const saveText = useCallback((key, value) => saveTexts({ [key]: value }), [saveTexts])
+
   const value = useMemo(
-    () => ({ editing, setEditing, getText, saveText, track, status, statusError }),
-    [editing, getText, saveText, track, status, statusError],
+    () => ({ editing, setEditing, getText, saveText, saveTexts, track, status, statusError }),
+    [editing, getText, saveText, saveTexts, track, status, statusError],
   )
 
   // Wait for saved text before rendering so visitors never see defaults flash first.

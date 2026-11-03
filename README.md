@@ -13,9 +13,11 @@ edit mode:
 
 - Every piece of page text gets a dashed outline. Click it, type, then click away (or press Enter)
   to save. Escape cancels. Multi-line fields like opening hours accept Enter for new lines.
-- The homepage hero image has an upload panel in its top-right corner: add, replace (click or drag
-  and drop a file) or remove the image, and set its alt text. Large photos are resized in the browser
-  (max 2400px wide, WebP) before upload.
+- The homepage hero image has a panel in its top-right corner. **Add / Replace** (click or drag and
+  drop a file) opens a crop & resize dialog: drag to position, zoom, pick a shape (21:9, 16:9, 3:2 or
+  the original), and pick an output size (1200–3200px wide, never enlarged). **Crop & resize** reopens
+  the dialog for the current image with the previous crop restored. You can also set alt text or
+  remove the image.
 - On the menu page, the menu switches to the menu editor: add, edit, delete and drag (⠿) to
   reorder sections and items.
 - The admin bar shows save status. Edit mode stays on as you move between pages until you click
@@ -61,7 +63,9 @@ and add it to the `NAV` list in `AdminLayout.jsx`.
   with a new unique `id`.
 - **Images:** uploaded to the public `site-images` Supabase Storage bucket (created by
   `schema.sql`; 10 MB limit, images only). The file's storage path is saved in `site_content`, and
-  replaced or removed files are deleted from storage. `<EditableImage id="..." folder="...">`
+  replaced or removed files are deleted from storage. Each image keeps an uncropped original
+  (`originals/` folder, max 3200px) plus its crop settings, so the crop can be changed later without
+  losing quality. `<EditableImage id="..." folder="...">`
   works anywhere on the site, the same way `<EditableText>` does.
 - **Settings:** dashboard settings are stored in `site_content` too, under `settings.*` keys
   (see `src/lib/seo.js`). `usePageMeta()` applies the title and description on each page.
@@ -81,12 +85,13 @@ src/
   components/Layout.jsx      admin bar, header, nav, footer
   components/AdminBar.jsx    sticky logged-in bar with the edit-mode toggle
   components/EditableText.jsx  text that becomes editable in edit mode
-  components/EditableImage.jsx image with upload/replace/remove controls in edit mode
+  components/EditableImage.jsx image with upload/crop/replace/remove controls in edit mode
+  components/ImageCropper.jsx  crop & resize dialog (react-easy-crop)
   components/menu/           MenuEditor, SortableList (drag & drop), SectionForm, ItemForm
   components/RequireAuth.jsx redirects to /login when signed out (used by the dashboard)
   lib/supabase.js            Supabase client
   lib/api.js                 all database and storage calls
-  lib/images.js              resizes photos in the browser before upload
+  lib/images.js              in-browser photo resizing and cropping (canvas)
   lib/AuthProvider.jsx       session state; lib/useAuth.js for the hook
   lib/SiteProvider.jsx       edit mode, page text, save status; lib/site.js for useSite()
   lib/seo.js                 site title/description settings and usePageMeta()
