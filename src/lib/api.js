@@ -89,3 +89,18 @@ export function formatPrice(price) {
   if (price == null || price === '') return ''
   return `$${Number(price).toFixed(2)}`
 }
+
+// ---- Editable page text ----
+
+export async function fetchContent() {
+  const rows = check(await supabase.from('site_content').select('key, value'))
+  return Object.fromEntries(rows.map((r) => [r.key, r.value]))
+}
+
+export async function saveContent(key, value) {
+  check(
+    await supabase
+      .from('site_content')
+      .upsert({ key, value, updated_at: new Date().toISOString() }),
+  )
+}

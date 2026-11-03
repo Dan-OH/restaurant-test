@@ -1,0 +1,39 @@
+@use 'variables' as *;
+
+// Text that keeps its line breaks (hours, addresses).
+.multiline {
+  white-space: pre-line;
+}
+
+// In-place editable text while edit mode is on.
+.editable {
+  outline: 1px dashed color-mix(in srgb, currentColor 45%, transparent);
+  outline-offset: 3px;
+  border-radius: 2px;
+  cursor: text;
+  transition: outline-color 0.15s;
+
+  &:hover {
+    outline-color: color-mix(in srgb, currentColor 80%, transparent);
+  }
+
+  &:focus {
+    outline: 2px solid $accent;
+  }
+
+  // Keep emptied fields clickable and visible.
+  &:empty {
+    display: inline-block;
+    min-width: 4ch;
+
+    &::before {
+      content: attr(data-placeholder);
+      opacity: 0.45;
+      font-style: italic;
+    }
+  }
+}
+
+.hero .editable:focus {
+  outline-color: #fff;
+}

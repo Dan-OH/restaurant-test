@@ -1,44 +1,50 @@
 import { Link } from 'react-router-dom'
+import EditableText from '../components/EditableText.jsx'
+import { useSite } from '../lib/site'
 
 export default function Home() {
+  const { editing } = useSite()
+
   return (
     <>
       <section className="hero">
         <div className="container">
-          <h1>Seasonal food, made with care</h1>
-          <p>A neighbourhood restaurant serving honest, local ingredients every day.</p>
-          <Link to="/menu" className="button">
-            View the menu
+          <EditableText id="home.hero.title" as="h1">
+            Seasonal food, made with care
+          </EditableText>
+          <EditableText id="home.hero.subtitle" as="p">
+            A neighbourhood restaurant serving honest, local ingredients every day.
+          </EditableText>
+          <Link to="/menu" className="button" onClick={(e) => editing && e.preventDefault()}>
+            <EditableText id="home.hero.button">View the menu</EditableText>
           </Link>
         </div>
       </section>
 
       <section className="container page info-grid">
         <div>
-          <h2>Hours</h2>
-          <p>
-            Tue – Thu: 5pm – 10pm
-            <br />
-            Fri – Sat: 5pm – 11pm
-            <br />
-            Sun: 10am – 3pm (brunch)
-          </p>
+          <EditableText id="home.hours.title" as="h2">
+            Hours
+          </EditableText>
+          <EditableText id="home.hours.body" as="p" multiline>
+            {'Tue – Thu: 5pm – 10pm\nFri – Sat: 5pm – 11pm\nSun: 10am – 3pm (brunch)'}
+          </EditableText>
         </div>
         <div>
-          <h2>Location</h2>
-          <p>
-            123 Main Street
-            <br />
-            Your City
-          </p>
+          <EditableText id="home.location.title" as="h2">
+            Location
+          </EditableText>
+          <EditableText id="home.location.body" as="p" multiline>
+            {'123 Main Street\nYour City'}
+          </EditableText>
         </div>
         <div>
-          <h2>Reservations</h2>
-          <p>
-            Call us at (555) 123-4567
-            <br />
-            Walk-ins always welcome
-          </p>
+          <EditableText id="home.reservations.title" as="h2">
+            Reservations
+          </EditableText>
+          <EditableText id="home.reservations.body" as="p" multiline>
+            {'Call us at (555) 123-4567\nWalk-ins always welcome'}
+          </EditableText>
         </div>
       </section>
     </>

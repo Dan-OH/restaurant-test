@@ -12,7 +12,7 @@ export default function Login() {
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
 
-  const redirectTo = location.state?.from || '/admin'
+  const redirectTo = location.state?.from || '/'
 
   if (session) return <Navigate to={redirectTo} replace />
 

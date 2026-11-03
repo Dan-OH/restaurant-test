@@ -1,0 +1,13 @@
+@use 'variables' as *;
+
+@mixin small-screen {
+  @media (max-width: $bp-small) {
+    @content;
+  }
+}
+
+@mixin focus-ring {
+  outline: 2px solid $accent;
+  outline-offset: -1px;
+  border-color: transparent;
+}

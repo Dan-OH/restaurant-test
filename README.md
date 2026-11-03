@@ -1,17 +1,29 @@
 # Restaurant Website
 
-Vite + React (plain JS) site with a public homepage and menu, plus a login-protected menu editor backed by Supabase.
+Vite + React (plain JS) site with a homepage and menu, editable in place by logged-in staff. Data lives in Supabase.
 
 - `/` – homepage
-- `/menu` – public menu, read from Supabase
-- `/login` – staff login (Supabase email/password auth)
-- `/admin` – create, edit, delete and drag-to-reorder menu sections and items
+- `/menu` – the menu
+- `/login` – staff login (linked as "Staff login" in the footer)
+
+## Editing the site
+
+Once logged in, a sticky **admin bar** appears above the site. Click **Edit page** to put the site into
+edit mode:
+
+- Every piece of page text gets a dashed outline. Click it, type, then click away (or press Enter)
+  to save. Escape cancels. Multi-line fields like opening hours accept Enter for new lines.
+- On the menu page, the menu switches to the menu editor: add, edit, delete and drag (⠿) to
+  reorder sections and items.
+- The admin bar shows save status. Edit mode stays on as you move between pages until you click
+  **Done editing**.
 
 ## Setup
 
 1. **Create a Supabase project** at <https://supabase.com>.
 2. **Create the tables.** In the Supabase dashboard open **SQL Editor**, paste the contents of
-   [`supabase/schema.sql`](supabase/schema.sql) and run it. Optionally run
+   [`supabase/schema.sql`](supabase/schema.sql) and run it. The script is safe to re-run, so run it
+   again whenever it changes. Optionally run
    [`supabase/seed.sql`](supabase/seed.sql) for sample menu data.
 3. **Create a login.** Go to **Authentication → Users → Add user**, enter an email and password,
    and tick "Auto confirm user". Then under **Authentication → Sign In / Providers**, turn off
@@ -30,8 +42,12 @@ Vite + React (plain JS) site with a public homepage and menu, plus a login-prote
 
 ## How it works
 
-- **Data:** two tables, `menu_sections` and `menu_items` (items belong to a section; deleting a
+- **Menu data:** `menu_sections` and `menu_items` (items belong to a section; deleting a
   section deletes its items). Each has a `position` column used for ordering.
+- **Page text:** `site_content` stores text edits as key/value rows. In code, text is wrapped in
+  `<EditableText id="home.hero.title" as="h1">Default text</EditableText>`. The children are the default,
+  shown until someone saves an edit under that `id`. To make new text editable, wrap it the same way
+  with a new unique `id`.
 - **Security:** Row Level Security lets anyone read the menu, but only signed-in users can insert,
   update or delete. The publishable key is safe to ship in the browser because of these policies.
 - **Reordering:** dragging a section or item updates the UI right away and calls the
@@ -43,15 +59,19 @@ Vite + React (plain JS) site with a public homepage and menu, plus a login-prote
 ```
 src/
   App.jsx                    routes
-  components/Layout.jsx      header, nav, footer
-  components/RequireAuth.jsx redirects to /login when signed out
-  components/admin/          SortableList (drag & drop), SectionForm, ItemForm
+  components/Layout.jsx      admin bar, header, nav, footer
+  components/AdminBar.jsx    sticky logged-in bar with the edit-mode toggle
+  components/EditableText.jsx  text that becomes editable in edit mode
+  components/menu/           MenuEditor, SortableList (drag & drop), SectionForm, ItemForm
   lib/supabase.js            Supabase client
-  lib/menuApi.js             all database calls
+  lib/api.js                 all database calls
   lib/AuthProvider.jsx       session state; lib/useAuth.js for the hook
-  pages/                     Home, Menu, Login, AdminMenu
+  lib/SiteProvider.jsx       edit mode, page text, save status; lib/site.js for useSite()
+  pages/                     Home, Menu, Login
+  styles/                    SCSS: main.scss imports the partials;
+                             _variables.scss holds colors, fonts and breakpoints
 supabase/
-  schema.sql                 tables, RLS policies, reorder functions
+  schema.sql                 tables, RLS policies, reorder functions (safe to re-run)
   seed.sql                   sample data
 ```
 

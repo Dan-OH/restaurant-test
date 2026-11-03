@@ -1,11 +1,10 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import Layout from './components/Layout.jsx'
-import RequireAuth from './components/RequireAuth.jsx'
 import Home from './pages/Home.jsx'
 import Menu from './pages/Menu.jsx'
 import Login from './pages/Login.jsx'
-import AdminMenu from './pages/AdminMenu.jsx'
 import { isConfigured } from './lib/supabase'
+import { SiteProvider } from './lib/SiteProvider.jsx'
 
 export default function App() {
   if (!isConfigured) {
@@ -21,21 +20,15 @@ export default function App() {
   }
 
   return (
-    <Routes>
-      <Route element={<Layout />}>
-        <Route index element={<Home />} />
-        <Route path="menu" element={<Menu />} />
-        <Route path="login" element={<Login />} />
-        <Route
-          path="admin"
-          element={
-            <RequireAuth>
-              <AdminMenu />
-            </RequireAuth>
-          }
-        />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Route>
-    </Routes>
+    <SiteProvider>
+      <Routes>
+        <Route element={<Layout />}>
+          <Route index element={<Home />} />
+          <Route path="menu" element={<Menu />} />
+          <Route path="login" element={<Login />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Route>
+      </Routes>
+    </SiteProvider>
   )
 }

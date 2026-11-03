@@ -68,3 +68,23 @@ revoke execute on function public.reorder_sections(uuid[]) from anon, public;
 revoke execute on function public.reorder_items(uuid[])    from anon, public;
 grant  execute on function public.reorder_sections(uuid[]) to authenticated;
 grant  execute on function public.reorder_items(uuid[])    to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Editable page text. Each row overrides one piece of text on the site, keyed
+-- by an id like 'home.hero.title'. Missing keys fall back to the defaults in code.
+-- ---------------------------------------------------------------------------
+create table if not exists public.site_content (
+  key        text primary key,
+  value      text not null,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.site_content enable row level security;
+
+drop policy if exists "Public read content" on public.site_content;
+create policy "Public read content" on public.site_content
+  for select using (true);
+
+drop policy if exists "Authenticated write content" on public.site_content;
+create policy "Authenticated write content" on public.site_content
+  for all to authenticated using (true) with check (true);

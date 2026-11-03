@@ -1,0 +1,77 @@
+@use 'variables' as *;
+@use 'mixins' as *;
+
+.admin-bar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: $admin-bar-bg;
+  color: #f4ede6;
+  font-size: 0.875rem;
+  transition: background 0.2s;
+
+  &.is-editing {
+    background: $admin-bar-editing-bg;
+  }
+
+  .button.on-dark {
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.35);
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+  }
+
+  .link-button {
+    color: rgba(255, 255, 255, 0.75);
+
+    &:hover {
+      color: #fff;
+    }
+  }
+}
+
+.admin-bar-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: $admin-bar-height;
+  flex-wrap: wrap;
+  padding-top: 0.4rem;
+  padding-bottom: 0.4rem;
+}
+
+.admin-bar-left,
+.admin-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.admin-bar-hint {
+  opacity: 0.8;
+
+  @include small-screen {
+    display: none;
+  }
+}
+
+.admin-bar-user {
+  opacity: 0.7;
+
+  @include small-screen {
+    display: none;
+  }
+}
+
+.admin-bar-status {
+  opacity: 0.85;
+
+  &.error {
+    color: #ffb4a8;
+    opacity: 1;
+  }
+}

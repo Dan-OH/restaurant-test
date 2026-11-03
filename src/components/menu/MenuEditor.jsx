@@ -1,35 +1,27 @@
-import { useCallback, useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import * as api from '../lib/menuApi'
-import { DragHandle, SortableList } from '../components/admin/SortableList.jsx'
-import SectionForm from '../components/admin/SectionForm.jsx'
-import ItemForm from '../components/admin/ItemForm.jsx'
+import { useState } from 'react'
+import * as api from '../../lib/api'
+import { useSite } from '../../lib/site'
+import { DragHandle, SortableList } from './SortableList.jsx'
+import SectionForm from './SectionForm.jsx'
+import ItemForm from './ItemForm.jsx'
 
-export default function AdminMenu() {
-  const [sections, setSections] = useState(null)
+/**
+ * Edit-mode view of the menu. `sections` state is owned by the Menu page so the
+ * public view reflects edits immediately; `reload` refetches from the database.
+ */
+export default function MenuEditor({ sections, setSections, reload }) {
+  const { track } = useSite()
   const [error, setError] = useState(null)
   const [addingSection, setAddingSection] = useState(false)
-
-  const load = useCallback(async () => {
-    try {
-      setSections(await api.fetchMenu())
-    } catch (e) {
-      setError(e.message)
-    }
-  }, [])
-
-  useEffect(() => {
-    api.fetchMenu().then(setSections).catch((e) => setError(e.message))
-  }, [])
 
   // Run a mutation; on failure show the error and reload from the server so the UI isn't stale.
   async function run(fn) {
     setError(null)
     try {
-      return await fn()
+      return await track(fn)
     } catch (e) {
       setError(e.message)
-      await load()
+      await reload()
       throw e
     }
   }
@@ -98,19 +90,11 @@ export default function AdminMenu() {
     run(() => api.reorderItems(next.map((i) => i.id))).catch(() => {})
   }
 
-  if (!sections) {
-    return <div className="container page">{error ? <p className="error">{error}</p> : 'Loading…'}</div>
-  }
-
   return (
-    <div className="container page admin">
-      <div className="admin-header">
-        <h1>Edit Menu</h1>
-        <Link to="/menu" className="button secondary">
-          View live menu
-        </Link>
-      </div>
-      <p className="muted">Drag the ⠿ handles to reorder sections and items. Changes save automatically.</p>
+    <div className="menu-editor">
+      <p className="muted editor-hint">
+        Drag the ⠿ handles to reorder sections and items. Changes save automatically.
+      </p>
       {error && <p className="error">{error}</p>}
 
       <SortableList

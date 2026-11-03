@@ -1,0 +1,95 @@
+@use 'variables' as *;
+
+:root {
+  font-family: $font-body;
+  line-height: 1.5;
+  color: $text;
+  background: $bg;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+#root {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+main {
+  flex: 1;
+}
+
+h1,
+h2,
+h3 {
+  font-family: $font-heading;
+  line-height: 1.2;
+  margin: 0 0 0.5rem;
+}
+
+h1 {
+  font-size: 2.25rem;
+}
+
+p {
+  margin: 0 0 0.75rem;
+}
+
+a {
+  color: $accent;
+}
+
+code {
+  background: #f0e9e1;
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+}
+
+// Utilities
+.container {
+  max-width: $container-width;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.page {
+  padding-top: 2.5rem;
+  padding-bottom: 3rem;
+}
+
+.narrow {
+  max-width: 420px;
+}
+
+.muted {
+  color: $muted;
+}
+
+.error {
+  color: $danger;
+}
+
+.grow {
+  flex: 1;
+  min-width: 0;
+}
+
+.notice {
+  padding-top: 4rem;
+}
+
+.card {
+  background: $surface;
+  border: 1px solid $border;
+  border-radius: $radius;
+  padding: 1.25rem;
+}
