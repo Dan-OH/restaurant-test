@@ -1,20 +1,23 @@
 import { useEffect, useMemo, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
+import ButtonBase from '@mui/material/ButtonBase'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import CircularProgress from '@mui/material/CircularProgress'
-import Link from '@mui/material/Link'
 import Slider from '@mui/material/Slider'
 import Stack from '@mui/material/Stack'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Typography from '@mui/material/Typography'
 import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh'
+import CompareIcon from '@mui/icons-material/Compare'
+import { imageUrl } from '../../lib/api'
 import { canEncode, renderImage } from '../../lib/images'
 import { formatBytes, formatType } from '../../lib/media'
 import { useSite } from '../../lib/site'
 import { mediaSettings, rerenderMedia, sourceUrl } from '../mediaOps'
+import CompareDialog from './CompareDialog.jsx'
 
 const FORMATS = [
   { value: 'image/webp', label: 'WebP', hint: 'Small files, great for photos. Recommended.' },
@@ -43,6 +46,7 @@ export default function OptimizePanel({ media, disabled, onApplied }) {
   const [loading, setLoading] = useState(false)
   const [applying, setApplying] = useState(false)
   const [error, setError] = useState(null)
+  const [comparing, setComparing] = useState(false)
   const [src] = useState(() => sourceUrl(media))
 
   const changed =
@@ -82,6 +86,7 @@ export default function OptimizePanel({ media, disabled, onApplied }) {
     try {
       await rerenderMedia(site, media, { format, quality: quality / 100, width }, preview?.result)
       setPreview(null)
+      setComparing(false)
       onApplied?.()
     } catch (e) {
       setError(e.message)
@@ -163,8 +168,9 @@ export default function OptimizePanel({ media, disabled, onApplied }) {
           </ToggleButtonGroup>
         </div>
 
-        <Box sx={{ p: 1.5, borderRadius: 1, bgcolor: 'action.hover' }}>
-          <Stack direction="row" spacing={1.5} useFlexGap sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+        <Stack direction="row" spacing={2} sx={{ p: 1.5, borderRadius: 1, bgcolor: 'action.hover', alignItems: 'center' }}>
+          {showPreview && <PreviewThumb src={preview.url} onClick={() => setComparing(true)} />}
+          <Stack direction="row" spacing={1.5} useFlexGap sx={{ alignItems: 'center', flexWrap: 'wrap', flex: 1 }}>
             <Typography variant="body2">
               Current: <strong>{formatBytes(media.size)}</strong> · {formatType(media.mime_type)}
               {media.width ? ` · ${media.width}px wide` : ''}
@@ -183,9 +189,6 @@ export default function OptimizePanel({ media, disabled, onApplied }) {
                     label={saved > 0 ? `${pct}% smaller` : `${Math.abs(pct)}% larger`}
                   />
                 ) : null}
-                <Link href={preview.url} target="_blank" rel="noreferrer" variant="body2">
-                  View full size
-                </Link>
               </>
             )}
             {!changed && (
@@ -194,7 +197,7 @@ export default function OptimizePanel({ media, disabled, onApplied }) {
               </Typography>
             )}
           </Stack>
-        </Box>
+        </Stack>
 
         {error && <Alert severity="error">{error}</Alert>}
 
@@ -210,6 +213,73 @@ export default function OptimizePanel({ media, disabled, onApplied }) {
           </Button>
         </Box>
       </Stack>
+
+      {comparing && showPreview && (
+        <CompareDialog
+          current={{
+            src: imageUrl(media.path),
+            size: media.size,
+            type: media.mime_type,
+            width: media.width,
+            height: media.height,
+          }}
+          next={{
+            src: preview.url,
+            size: preview.result.file.size,
+            type: preview.result.file.type,
+            width: preview.result.width,
+            height: preview.result.height,
+          }}
+          onClose={() => setComparing(false)}
+          onApply={apply}
+          applyDisabled={disabled}
+          applying={applying}
+        />
+      )}
     </Box>
+  )
+}
+
+// Small clickable preview of the optimized image; opens the comparison dialog.
+function PreviewThumb({ src, onClick }) {
+  return (
+    <ButtonBase
+      onClick={onClick}
+      aria-label="Compare current and optimized image"
+      title="Compare with current"
+      sx={{
+        position: 'relative',
+        flexShrink: 0,
+        width: 112,
+        height: 72,
+        borderRadius: 1,
+        overflow: 'hidden',
+        bgcolor: 'grey.300',
+        '&:hover .compare-overlay, &.Mui-focusVisible .compare-overlay': { opacity: 1 },
+      }}
+    >
+      <Box component="img" src={src} alt="" sx={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+      <Box
+        className="compare-overlay"
+        sx={{
+          position: 'absolute',
+          inset: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 0.25,
+          bgcolor: 'rgba(0, 0, 0, 0.45)',
+          color: '#fff',
+          fontSize: 12,
+          fontWeight: 600,
+          opacity: 0.85,
+          transition: 'opacity 0.15s',
+        }}
+      >
+        <CompareIcon fontSize="small" />
+        Compare
+      </Box>
+    </ButtonBase>
   )
 }
