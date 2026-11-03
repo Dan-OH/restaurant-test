@@ -24,7 +24,7 @@ export default function EditableText({ id, as: Tag = 'span', multiline = false, 
       className={[classes, 'editable'].filter(Boolean).join(' ')}
       value={value}
       multiline={multiline}
-      onSave={(next) => saveText(id, next)}
+      onSave={(next) => saveText(id, next).catch(() => {})} // failure shows in the admin bar
     />
   )
 }

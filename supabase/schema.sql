@@ -88,3 +88,31 @@ create policy "Public read content" on public.site_content
 drop policy if exists "Authenticated write content" on public.site_content;
 create policy "Authenticated write content" on public.site_content
   for all to authenticated using (true) with check (true);
+
+-- ---------------------------------------------------------------------------
+-- Image uploads (hero image etc). Public bucket: anyone can view files by URL,
+-- only signed-in users can upload or delete.
+-- ---------------------------------------------------------------------------
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('site-images', 'site-images', true, 10485760,
+        array['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif'])
+on conflict (id) do update
+  set public = excluded.public,
+      file_size_limit = excluded.file_size_limit,
+      allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists "Authenticated read site images" on storage.objects;
+create policy "Authenticated read site images" on storage.objects
+  for select to authenticated using (bucket_id = 'site-images');
+
+drop policy if exists "Authenticated upload site images" on storage.objects;
+create policy "Authenticated upload site images" on storage.objects
+  for insert to authenticated with check (bucket_id = 'site-images');
+
+drop policy if exists "Authenticated update site images" on storage.objects;
+create policy "Authenticated update site images" on storage.objects
+  for update to authenticated using (bucket_id = 'site-images');
+
+drop policy if exists "Authenticated delete site images" on storage.objects;
+create policy "Authenticated delete site images" on storage.objects
+  for delete to authenticated using (bucket_id = 'site-images');

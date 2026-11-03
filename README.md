@@ -13,10 +13,21 @@ edit mode:
 
 - Every piece of page text gets a dashed outline. Click it, type, then click away (or press Enter)
   to save. Escape cancels. Multi-line fields like opening hours accept Enter for new lines.
+- The homepage hero image has an upload panel in its top-right corner: add, replace (click or drag
+  and drop a file) or remove the image, and set its alt text. Large photos are resized in the browser
+  (max 2400px wide, WebP) before upload.
 - On the menu page, the menu switches to the menu editor: add, edit, delete and drag (⠿) to
   reorder sections and items.
 - The admin bar shows save status. Edit mode stays on as you move between pages until you click
   **Done editing**.
+
+The admin bar also links to the **Dashboard** (`/admin`), where site-wide settings live:
+
+- **Site settings:** the website title (browser tab and search result headline; other pages show
+  as "Menu · Title") and the meta description, with length guides and a search result preview.
+
+To add a dashboard page, create it in `src/pages/admin/`, add a route under `/admin` in `App.jsx`,
+and add it to the `NAV` list in `AdminLayout.jsx`.
 
 ## Setup
 
@@ -48,6 +59,14 @@ edit mode:
   `<EditableText id="home.hero.title" as="h1">Default text</EditableText>`. The children are the default,
   shown until someone saves an edit under that `id`. To make new text editable, wrap it the same way
   with a new unique `id`.
+- **Images:** uploaded to the public `site-images` Supabase Storage bucket (created by
+  `schema.sql`; 10 MB limit, images only). The file's storage path is saved in `site_content`, and
+  replaced or removed files are deleted from storage. `<EditableImage id="..." folder="...">`
+  works anywhere on the site, the same way `<EditableText>` does.
+- **Settings:** dashboard settings are stored in `site_content` too, under `settings.*` keys
+  (see `src/lib/seo.js`). `usePageMeta()` applies the title and description on each page.
+  Search engines like Google run JavaScript and pick these up. Link previews on social media and
+  chat apps don't run JavaScript, so they show the defaults in `index.html`.
 - **Security:** Row Level Security lets anyone read the menu, but only signed-in users can insert,
   update or delete. The publishable key is safe to ship in the browser because of these policies.
 - **Reordering:** dragging a section or item updates the UI right away and calls the
@@ -62,12 +81,17 @@ src/
   components/Layout.jsx      admin bar, header, nav, footer
   components/AdminBar.jsx    sticky logged-in bar with the edit-mode toggle
   components/EditableText.jsx  text that becomes editable in edit mode
+  components/EditableImage.jsx image with upload/replace/remove controls in edit mode
   components/menu/           MenuEditor, SortableList (drag & drop), SectionForm, ItemForm
+  components/RequireAuth.jsx redirects to /login when signed out (used by the dashboard)
   lib/supabase.js            Supabase client
-  lib/api.js                 all database calls
+  lib/api.js                 all database and storage calls
+  lib/images.js              resizes photos in the browser before upload
   lib/AuthProvider.jsx       session state; lib/useAuth.js for the hook
   lib/SiteProvider.jsx       edit mode, page text, save status; lib/site.js for useSite()
+  lib/seo.js                 site title/description settings and usePageMeta()
   pages/                     Home, Menu, Login
+  pages/admin/               dashboard: AdminLayout (top bar + sidebar), SiteSettings
   styles/                    SCSS: main.scss imports the partials;
                              _variables.scss holds colors, fonts and breakpoints
 supabase/

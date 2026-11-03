@@ -14,15 +14,6 @@
     background: $admin-bar-editing-bg;
   }
 
-  .button.on-dark {
-    color: #fff;
-    border-color: rgba(255, 255, 255, 0.35);
-
-    &:hover {
-      background: rgba(255, 255, 255, 0.1);
-    }
-  }
-
   .link-button {
     color: rgba(255, 255, 255, 0.75);
 
@@ -73,5 +64,16 @@
   &.error {
     color: #ffb4a8;
     opacity: 1;
+  }
+}
+
+.admin-bar-link {
+  color: #fff;
+  text-decoration: none;
+  opacity: 0.85;
+
+  &:hover {
+    opacity: 1;
+    text-decoration: underline;
   }
 }

@@ -104,3 +104,28 @@ export async function saveContent(key, value) {
       .upsert({ key, value, updated_at: new Date().toISOString() }),
   )
 }
+
+// ---- Images (Supabase Storage) ----
+
+const IMAGE_BUCKET = 'site-images'
+
+/** Uploads a file under `folder/` with a unique name and returns its storage path. */
+export async function uploadImage(file, folder) {
+  const ext = file.type.split('/')[1]?.replace('jpeg', 'jpg') || 'img'
+  const path = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
+  check(
+    await supabase.storage
+      .from(IMAGE_BUCKET)
+      .upload(path, file, { contentType: file.type, cacheControl: '31536000' }),
+  )
+  return path
+}
+
+export async function deleteImage(path) {
+  check(await supabase.storage.from(IMAGE_BUCKET).remove([path]))
+}
+
+export function imageUrl(path) {
+  if (!path) return null
+  return supabase.storage.from(IMAGE_BUCKET).getPublicUrl(path).data.publicUrl
+}

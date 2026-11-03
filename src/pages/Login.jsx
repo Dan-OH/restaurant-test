@@ -2,8 +2,10 @@ import { useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/useAuth'
+import { usePageMeta } from '../lib/seo'
 
 export default function Login() {
+  usePageMeta('Log in')
   const { session } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()

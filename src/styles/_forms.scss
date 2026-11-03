@@ -48,3 +48,17 @@
 .inline-form {
   padding: 0.25rem 0;
 }
+
+.field-hint {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-weight: normal;
+  font-size: 0.8rem;
+  color: $muted;
+
+  .over-limit {
+    color: $danger;
+    font-weight: 600;
+  }
+}

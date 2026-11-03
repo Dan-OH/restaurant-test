@@ -52,14 +52,15 @@ export function SiteProvider({ children }) {
       setContent((c) => ({ ...c, [key]: value }))
       try {
         await track(() => api.saveContent(key, value))
-      } catch {
-        // Roll back so the page shows what's actually stored.
+      } catch (e) {
+        // Roll back so the page shows what's actually stored, then let the caller know.
         setContent((c) => {
           const next = { ...c }
           if (previous === undefined) delete next[key]
           else next[key] = previous
           return next
         })
+        throw e
       }
     },
     [content, track],

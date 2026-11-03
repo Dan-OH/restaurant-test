@@ -9,6 +9,7 @@ $border: #e6ddd3;
 $accent: #9c3d2e;
 $accent-hover: color.adjust($accent, $lightness: -6%);
 $danger: #b42318;
+$success: #1f7a45;
 $hover-bg: #f3ede6;
 $admin-bar-bg: #1f1a17;
 $admin-bar-editing-bg: #2f4f3a;
@@ -25,3 +26,4 @@ $handle-offset: 2.5rem; // indent that lines content up past a drag handle
 
 // Breakpoints
 $bp-small: 560px;
+$bp-medium: 800px;

@@ -1,14 +1,18 @@
 import { Link } from 'react-router-dom'
 import EditableText from '../components/EditableText.jsx'
+import EditableImage from '../components/EditableImage.jsx'
 import { useSite } from '../lib/site'
+import { usePageMeta } from '../lib/seo'
 
 export default function Home() {
   const { editing } = useSite()
+  usePageMeta()
 
   return (
     <>
       <section className="hero">
-        <div className="container">
+        <EditableImage id="home.hero.image" folder="hero" className="hero-image" label="hero image" />
+        <div className="container hero-content">
           <EditableText id="home.hero.title" as="h1">
             Seasonal food, made with care
           </EditableText>

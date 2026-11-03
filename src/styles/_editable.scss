@@ -1,4 +1,5 @@
 @use 'variables' as *;
+@use 'mixins' as *;
 
 // Text that keeps its line breaks (hours, addresses).
 .multiline {
@@ -36,4 +37,80 @@
 
 .hero .editable:focus {
   outline-color: #fff;
+}
+
+// Upload / replace / remove panel shown over an EditableImage in edit mode.
+.image-controls {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  width: 300px;
+  max-width: calc(100% - 2rem);
+  padding: 0.75rem;
+  border: 1px dashed rgba(255, 255, 255, 0.4);
+  border-radius: $radius;
+  background: rgba(20, 16, 14, 0.82);
+  backdrop-filter: blur(4px);
+  color: #fff;
+  font-size: 0.85rem;
+  text-align: left;
+  text-shadow: none;
+
+  &.drag-over {
+    border-color: #fff;
+    background: rgba(47, 79, 58, 0.92);
+  }
+
+  @include small-screen {
+    left: 1rem;
+    width: auto;
+  }
+}
+
+.image-controls-buttons {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.image-controls-hint {
+  opacity: 0.7;
+}
+
+.image-alt {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+
+  span {
+    font-weight: 600;
+    opacity: 0.85;
+  }
+
+  input {
+    font: inherit;
+    padding: 0.4rem 0.55rem;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+
+    &::placeholder {
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    &:focus {
+      outline: 2px solid #fff;
+      outline-offset: -1px;
+    }
+  }
+}
+
+.image-error {
+  margin: 0;
+  color: #ffb4a8;
 }

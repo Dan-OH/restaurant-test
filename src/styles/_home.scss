@@ -1,10 +1,46 @@
 @use 'variables' as *;
 
 .hero {
+  position: relative;
+  isolation: isolate; // keeps the image/overlay z-indexes local to the hero
+  overflow: hidden;
   background: linear-gradient(135deg, #3b2a22, #6b2f24);
   color: #fff;
   padding: 6rem 0;
   text-align: center;
+
+  // Darken uploaded photos so the white text stays readable.
+  &:has(.hero-image) {
+    min-height: min(70vh, 640px);
+    display: flex;
+    align-items: center;
+    background: #1f1a17;
+
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      background: linear-gradient(rgba(20, 14, 10, 0.45), rgba(20, 14, 10, 0.65));
+    }
+
+    .hero-content {
+      text-shadow: 0 1px 12px rgba(0, 0, 0, 0.35);
+    }
+  }
+}
+
+.hero-image {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.hero-content {
+  width: 100%;
 
   h1 {
     font-size: clamp(2rem, 5vw, 3.25rem);
@@ -20,6 +56,7 @@
     background: #fff;
     color: $accent;
     border-color: #fff;
+    text-shadow: none;
   }
 }
 

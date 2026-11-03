@@ -1,7 +1,7 @@
-import { useNavigate } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../lib/useAuth'
 import { useSite } from '../lib/site'
+import { useSignOut } from '../lib/useSignOut'
 
 const STATUS_TEXT = {
   idle: '',
@@ -12,15 +12,9 @@ const STATUS_TEXT = {
 export default function AdminBar() {
   const { session } = useAuth()
   const { editing, setEditing, status, statusError } = useSite()
-  const navigate = useNavigate()
+  const signOut = useSignOut()
 
   if (!session) return null
-
-  async function signOut() {
-    setEditing(false)
-    await supabase.auth.signOut()
-    navigate('/')
-  }
 
   return (
     <div className={`admin-bar${editing ? ' is-editing' : ''}`} role="region" aria-label="Site editing">
@@ -33,6 +27,9 @@ export default function AdminBar() {
           >
             {editing ? 'Done editing' : 'Edit page'}
           </button>
+          <Link to="/admin" className="admin-bar-link">
+            Dashboard
+          </Link>
           {editing && <span className="admin-bar-hint">Click any outlined text to change it.</span>}
         </div>
         <div className="admin-bar-right">
