@@ -1,4 +1,5 @@
-import { Link as RouterLink, useLocation } from 'react-router-dom'
+import { lazy, Suspense, useState } from 'react'
+import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom'
 import AppBar from '@mui/material/AppBar'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -18,9 +19,12 @@ import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined'
 import { useAuth } from '../lib/useAuth'
 import { useSite } from '../lib/site'
 import { useSignOut } from '../lib/useSignOut'
-import { findPageByPath } from '../lib/pages'
+import { findPageByPath, pagePath } from '../lib/pages'
 import AdminTheme from './AdminTheme.jsx'
 import { BAR_COLOR, BAR_EDITING_COLOR } from './theme'
+
+// Loaded the first time "Page settings" is clicked.
+const PageSettingsDialog = lazy(() => import('./dashboard/PageSettingsDialog.jsx'))
 
 /** Sticky bar above the site for logged-in users: edit-mode toggle, dashboard link, save status. */
 export default function AdminBar() {
@@ -28,7 +32,9 @@ export default function AdminBar() {
   const { editing, setEditing, pages } = useSite()
   const signOut = useSignOut()
   const { pathname } = useLocation()
+  const navigate = useNavigate()
   const currentPage = findPageByPath(pages, pathname)
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   if (!session) return null
 
@@ -64,11 +70,10 @@ export default function AdminBar() {
           </Button>
           {currentPage && (
             <Button
-              component={RouterLink}
-              to={`/admin/pages?edit=${currentPage.id}`}
               color="inherit"
               size="small"
               startIcon={<SettingsOutlinedIcon />}
+              onClick={() => setSettingsOpen(true)}
             >
               Page settings
             </Button>
@@ -95,6 +100,21 @@ export default function AdminBar() {
           </Button>
         </Toolbar>
       </AppBar>
+
+      {settingsOpen && currentPage && (
+        <Suspense fallback={null}>
+          <PageSettingsDialog
+            page={currentPage}
+            onClose={() => setSettingsOpen(false)}
+            onSaved={(saved) => {
+              setSettingsOpen(false)
+              // If the URL changed, follow the page to its new address.
+              const path = pagePath(saved)
+              if (path !== pathname) navigate(path, { replace: true })
+            }}
+          />
+        </Suspense>
+      )}
     </AdminTheme>
   )
 }
