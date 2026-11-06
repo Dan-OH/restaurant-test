@@ -1,27 +1,40 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link as RouterLink } from 'react-router-dom'
 import Alert from '@mui/material/Alert'
+import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Link from '@mui/material/Link'
+import CircularProgress from '@mui/material/CircularProgress'
+import Dialog from '@mui/material/Dialog'
+import DialogActions from '@mui/material/DialogActions'
+import DialogContent from '@mui/material/DialogContent'
+import DialogTitle from '@mui/material/DialogTitle'
+import IconButton from '@mui/material/IconButton'
 import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
+import useMediaQuery from '@mui/material/useMediaQuery'
+import { useTheme } from '@mui/material/styles'
 import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate'
-import CropIcon from '@mui/icons-material/Crop'
+import CloseIcon from '@mui/icons-material/Close'
+import EditIcon from '@mui/icons-material/Edit'
+import FileUploadOutlinedIcon from '@mui/icons-material/FileUploadOutlined'
 import LinkOffIcon from '@mui/icons-material/LinkOff'
+import PhotoLibraryOutlinedIcon from '@mui/icons-material/PhotoLibraryOutlined'
 import { useSite } from '../lib/site'
 import { hashFile, prepareImage } from '../lib/images'
 import AdminTheme from './AdminTheme.jsx'
+import AssetEditor, { AssetsPageLink } from './AssetEditor.jsx'
+import AssetPicker from './AssetPicker.jsx'
 import ImageCropper from './ImageCropper.jsx'
 import { useConfirm } from './confirm'
-import { createMediaFromFile, mediaSettings, rerenderMedia, sourceUrl } from './mediaOps'
+import { createMediaFromExisting, createMediaFromFile, sourceUrl } from './mediaOps'
 
 const MAX_BYTES = 10 * 1024 * 1024
 
 /**
- * Edit-mode panel for an EditableImage placement: upload (with crop), re-crop, alt text,
- * and remove from this placement. Images live in the media library (dashboard → Assets).
+ * Edit-mode control for an EditableImage spot: a single "Edit image" button that opens a
+ * dialog with the spot's options (upload, choose from Assets, remove) and the same asset
+ * editor as the Assets page (crop & resize, alt text, optimize). Dropping a file anywhere on
+ * the spot uploads it.
  */
 export default function ImageControls(props) {
   return (
@@ -34,12 +47,15 @@ export default function ImageControls(props) {
 function Controls({ id, folder, label, media, cropperProps }) {
   const site = useSite()
   const { confirm } = useConfirm()
+  const anchorRef = useRef(null)
   const inputRef = useRef(null)
+  const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
-  const [dragOver, setDragOver] = useState(false)
+  const [editorBusy, setEditorBusy] = useState(false)
   const [error, setError] = useState(null)
-  // What the cropper is working on: a newly chosen file, or the existing media's original.
-  const [session, setSession] = useState(null) // { src, file?, name?, initial? }
+  const [picking, setPicking] = useState(false)
+  // What the cropper is working on: a newly chosen file, or an asset to make a new crop of.
+  const [session, setSession] = useState(null) // { src, file?, hash?, name?, fromAsset? }
 
   // Free the object URL created for a newly chosen file.
   useEffect(() => {
@@ -50,6 +66,7 @@ function Controls({ id, folder, label, media, cropperProps }) {
   async function handleFile(file) {
     if (inputRef.current) inputRef.current.value = ''
     if (!file) return
+    setOpen(true)
     if (!file.type.startsWith('image/')) {
       setError('Please choose an image file.')
       return
@@ -62,7 +79,7 @@ function Controls({ id, folder, label, media, cropperProps }) {
       // Shrink huge photos up front so cropping is smooth and the stored original is reasonable.
       const prepared = await prepareImage(file, { maxWidth: 3200, quality: 0.9 })
       if (prepared.size > MAX_BYTES) throw new Error('That image is too large (max 10 MB).')
-      setSession({ src: URL.createObjectURL(prepared), file: prepared, hash, name: file.name, initial: null })
+      setSession({ src: URL.createObjectURL(prepared), file: prepared, hash, name: file.name })
     } catch (e) {
       setError(e.message)
     } finally {
@@ -70,28 +87,78 @@ function Controls({ id, folder, label, media, cropperProps }) {
     }
   }
 
-  function editExisting() {
+  // Dropping a file anywhere on the image spot uploads it.
+  const handleFileRef = useRef(handleFile)
+  useEffect(() => {
+    handleFileRef.current = handleFile
+  })
+  useEffect(() => {
+    const spot = anchorRef.current?.parentElement
+    if (!spot) return
+    const hasFiles = (e) => [...(e.dataTransfer?.types ?? [])].includes('Files')
+    function over(e) {
+      if (!hasFiles(e)) return
+      e.preventDefault()
+      spot.classList.add('is-drop-target')
+    }
+    function leave(e) {
+      if (!spot.contains(e.relatedTarget)) spot.classList.remove('is-drop-target')
+    }
+    function drop(e) {
+      const file = e.dataTransfer?.files?.[0]
+      spot.classList.remove('is-drop-target')
+      if (!file) return
+      e.preventDefault()
+      handleFileRef.current(file)
+    }
+    spot.addEventListener('dragover', over)
+    spot.addEventListener('dragleave', leave)
+    spot.addEventListener('drop', drop)
+    return () => {
+      spot.removeEventListener('dragover', over)
+      spot.removeEventListener('dragleave', leave)
+      spot.removeEventListener('drop', drop)
+      spot.classList.remove('is-drop-target')
+    }
+  }, [])
+
+  // Use an existing asset here as is.
+  async function applyAsset(asset) {
+    setBusy(true)
     setError(null)
-    setSession({ src: sourceUrl(media), file: null, initial: media.settings ? mediaSettings(media) : null })
+    try {
+      await site.saveText(id, asset.id)
+      setPicking(false)
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setBusy(false)
+    }
   }
 
+  // Crop a new version of an existing asset for this spot (reuses its original).
+  function cropNewFromAsset(asset) {
+    setPicking(false)
+    setError(null)
+    setSession({ src: sourceUrl(asset), file: null, fromAsset: asset })
+  }
+
+  // Saving the cropper for a new upload or a new version creates the asset and puts it here.
   async function handleCropSave(settings) {
     setBusy(true)
     setError(null)
     try {
-      if (session.file) {
-        const created = await createMediaFromFile(site, {
-          file: session.file,
-          src: session.src,
-          hash: session.hash,
-          settings,
-          folder,
-          name: session.name,
-        })
-        await site.saveText(id, created.id)
-      } else {
-        await rerenderMedia(site, media, settings)
-      }
+      const created = session.fromAsset
+        ? await createMediaFromExisting(site, session.fromAsset, settings, folder)
+        : await createMediaFromFile(site, {
+            file: session.file,
+            src: session.src,
+            hash: session.hash,
+            settings,
+            folder,
+            name: session.name,
+          })
+      await site.saveText(id, created.id)
       setSession(null)
     } catch (e) {
       setError(e.message)
@@ -103,7 +170,7 @@ function Controls({ id, folder, label, media, cropperProps }) {
   async function handleRemove() {
     const ok = await confirm({
       title: `Remove the ${label}?`,
-      message: 'It will be removed from this page but stays in Assets, so you can use it again or delete it there.',
+      message: 'It will be removed from this spot but stays in Assets, so you can use it again or delete it there.',
       confirmLabel: 'Remove',
     })
     if (!ok) return
@@ -115,115 +182,60 @@ function Controls({ id, folder, label, media, cropperProps }) {
     }
   }
 
-  function handleAltBlur(e) {
-    const next = e.target.value.trim()
-    if (next !== media.alt) site.updateMedia(media.id, { alt: next }).catch((err) => setError(err.message))
-  }
-
   return (
     <>
-      <Paper
-        elevation={6}
-        onDragOver={(e) => {
-          e.preventDefault()
-          setDragOver(true)
-        }}
-        onDragLeave={() => setDragOver(false)}
-        onDrop={(e) => {
-          e.preventDefault()
-          setDragOver(false)
-          handleFile(e.dataTransfer.files?.[0])
-        }}
-        sx={{
-          position: 'absolute',
-          top: 16,
-          right: 16,
-          left: { xs: 16, sm: 'auto' },
-          zIndex: 2,
-          width: { sm: 340 },
-          p: 1.5,
-          textAlign: 'left',
-          textShadow: 'none',
-          outline: dragOver ? '2px dashed' : 'none',
-          outlineColor: 'primary.main',
-          outlineOffset: 2,
-        }}
-      >
-        <input
-          ref={inputRef}
-          type="file"
-          accept="image/*"
-          hidden
-          onChange={(e) => handleFile(e.target.files?.[0])}
-        />
-        <Stack spacing={1.5}>
-          <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
-            <Button
-              variant="contained"
-              size="small"
-              startIcon={<AddPhotoAlternateIcon />}
-              loading={busy && !session}
-              loadingPosition="start"
-              disabled={busy}
-              onClick={() => inputRef.current.click()}
-            >
-              {media ? `Replace ${label}` : `Add ${label}`}
-            </Button>
-            {media && (
-              <Button variant="outlined" size="small" startIcon={<CropIcon />} disabled={busy} onClick={editExisting}>
-                Crop &amp; resize
-              </Button>
-            )}
-            {media && (
-              <Button
-                variant="outlined"
-                color="error"
-                size="small"
-                startIcon={<LinkOffIcon />}
-                disabled={busy}
-                onClick={handleRemove}
-              >
-                Remove
-              </Button>
-            )}
-          </Stack>
+      <Box ref={anchorRef} sx={{ position: 'absolute', top: 16, right: 16, zIndex: 2, textShadow: 'none' }}>
+        <Button
+          variant="contained"
+          size="small"
+          startIcon={media ? <EditIcon /> : <AddPhotoAlternateIcon />}
+          onClick={() => setOpen(true)}
+          sx={{ boxShadow: 3 }}
+        >
+          {media ? `Edit ${label}` : `Add ${label}`}
+        </Button>
+        <input ref={inputRef} type="file" accept="image/*" hidden onChange={(e) => handleFile(e.target.files?.[0])} />
+      </Box>
 
-          {media && (
-            <TextField
-              key={media.alt}
-              size="small"
-              label="Alt text"
-              placeholder="Describe the image for screen readers"
-              defaultValue={media.alt}
-              onBlur={handleAltBlur}
-              onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.querySelector('input')?.blur()}
-              fullWidth
-            />
-          )}
-          {media ? (
-            <Link component={RouterLink} to={`/admin/assets?image=${media.id}`} variant="caption">
-              Optimize or see where it's used in Assets
-            </Link>
-          ) : (
-            !busy && (
-              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                or drop an image here
-              </Typography>
-            )
-          )}
-          {error && !session && (
-            <Alert severity="error" sx={{ py: 0 }}>
-              {error}
-            </Alert>
-          )}
-        </Stack>
-      </Paper>
+      {open && (
+        <SpotDialog
+          label={label}
+          media={media}
+          cropperProps={cropperProps}
+          busy={busy || editorBusy}
+          preparing={busy && !session}
+          error={!session && !picking ? error : null}
+          onEditorBusy={setEditorBusy}
+          onUpload={() => inputRef.current.click()}
+          onDropFile={handleFile}
+          onChoose={() => {
+            setError(null)
+            setPicking(true)
+          }}
+          onRemove={handleRemove}
+          onClose={() => {
+            setOpen(false)
+            setError(null)
+          }}
+        />
+      )}
+
+      {picking && (
+        <AssetPicker
+          currentId={media?.id}
+          busy={busy}
+          error={error}
+          onUse={applyAsset}
+          onCropNew={cropNewFromAsset}
+          onClose={() => setPicking(false)}
+        />
+      )}
 
       {session && (
         <ImageCropper
           {...cropperProps}
           src={session.src}
-          initial={session.initial}
+          initial={null}
           busy={busy}
           error={error}
           onCancel={() => {
@@ -234,5 +246,117 @@ function Controls({ id, folder, label, media, cropperProps }) {
         />
       )}
     </>
+  )
+}
+
+function SpotDialog({
+  label,
+  media,
+  cropperProps,
+  busy,
+  preparing,
+  error,
+  onEditorBusy,
+  onUpload,
+  onDropFile,
+  onChoose,
+  onRemove,
+  onClose,
+}) {
+  const theme = useTheme()
+  const fullScreen = useMediaQuery(theme.breakpoints.down('sm'))
+  const [dragOver, setDragOver] = useState(false)
+  const title = label.charAt(0).toUpperCase() + label.slice(1)
+
+  return (
+    <Dialog
+      open
+      onClose={() => !busy && onClose()}
+      fullWidth
+      maxWidth="md"
+      fullScreen={fullScreen}
+      aria-labelledby="spot-dialog-title"
+    >
+      <DialogTitle id="spot-dialog-title" sx={{ pr: 6 }}>
+        {title}
+        <IconButton aria-label="Close" onClick={onClose} disabled={busy} sx={{ position: 'absolute', right: 8, top: 8 }}>
+          <CloseIcon />
+        </IconButton>
+      </DialogTitle>
+
+      <DialogContent
+        dividers
+        onDragOver={(e) => {
+          e.preventDefault()
+          setDragOver(true)
+        }}
+        onDragLeave={(e) => !e.currentTarget.contains(e.relatedTarget) && setDragOver(false)}
+        onDrop={(e) => {
+          e.preventDefault()
+          setDragOver(false)
+          onDropFile(e.dataTransfer.files?.[0])
+        }}
+        sx={{ outline: dragOver ? '2px dashed' : 'none', outlineColor: 'primary.main', outlineOffset: -8 }}
+      >
+        {/* Spot actions: what goes in this spot. */}
+        <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap', alignItems: 'center', mb: 2.5 }}>
+          <Button
+            variant={media ? 'outlined' : 'contained'}
+            startIcon={<FileUploadOutlinedIcon />}
+            onClick={onUpload}
+            disabled={busy}
+            loading={preparing}
+            loadingPosition="start"
+          >
+            {media ? 'Upload a new image' : 'Upload an image'}
+          </Button>
+          <Button variant="outlined" startIcon={<PhotoLibraryOutlinedIcon />} onClick={onChoose} disabled={busy}>
+            Choose from Assets
+          </Button>
+          {media && (
+            <Button color="error" startIcon={<LinkOffIcon />} onClick={onRemove} disabled={busy}>
+              Remove from this spot
+            </Button>
+          )}
+        </Stack>
+
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
+
+        {media ? (
+          <AssetEditor key={media.id} media={media} cropperProps={cropperProps} onBusyChange={onEditorBusy} />
+        ) : (
+          <Paper
+            variant="outlined"
+            sx={{ py: 6, px: 2, textAlign: 'center', borderStyle: 'dashed', borderWidth: 2, bgcolor: 'grey.50' }}
+          >
+            {preparing ? (
+              <CircularProgress />
+            ) : (
+              <>
+                <AddPhotoAlternateIcon sx={{ fontSize: 48, color: 'text.disabled' }} />
+                <Typography variant="h6" component="p">
+                  No {label} yet
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                  Drop an image here, upload one, or choose one you've already uploaded. You'll be able to crop
+                  and optimize it next.
+                </Typography>
+              </>
+            )}
+          </Paper>
+        )}
+      </DialogContent>
+
+      <DialogActions sx={{ px: 3, py: 1.5, justifyContent: 'space-between' }}>
+        <Box>{media && <AssetsPageLink media={media} />}</Box>
+        <Button variant="contained" onClick={onClose} disabled={busy}>
+          Done
+        </Button>
+      </DialogActions>
+    </Dialog>
   )
 }

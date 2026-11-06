@@ -247,7 +247,7 @@ export default function AssetsManager() {
         </>
       )}
 
-      {open && <MediaDetails media={open} usages={open.usages} onClose={() => setOpen(null)} />}
+      {open && <MediaDetails media={open} onClose={() => setOpen(null)} />}
     </Box>
   )
 }

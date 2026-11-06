@@ -104,6 +104,37 @@ export async function createMediaFromFile(site, { file, src, hash, settings, fol
 }
 
 /**
+ * Creates a new asset from an existing asset's original with new crop/size settings, e.g. to
+ * use the same photo in a differently shaped spot. Nothing is uploaded except the new rendered
+ * file; the original is shared. Name and alt text are copied. Returns the created row.
+ */
+export async function createMediaFromExisting(site, asset, settings, folder) {
+  const full = { ...DEFAULT_OUTPUT, format: asset.settings?.format ?? DEFAULT_OUTPUT.format, ...settings }
+  const rendered = await renderImage(sourceUrl(asset), full)
+  const path = await site.track(() => uploadImage(rendered.file, folder || folderOf(asset.path)))
+  try {
+    return await site.addMedia({
+      name: asset.name,
+      alt: asset.alt,
+      path,
+      original_path: asset.original_path || asset.path,
+      source_id: asset.source_id ?? null,
+      settings: full,
+      width: rendered.width,
+      height: rendered.height,
+      size: rendered.file.size,
+      mime_type: rendered.file.type,
+      original_width: asset.original_width,
+      original_height: asset.original_height,
+      original_size: asset.original_size,
+    })
+  } catch (e) {
+    deleteImage(path).catch(() => {})
+    throw e
+  }
+}
+
+/**
  * Re-renders an existing image with new settings (crop, size, format, quality) and swaps
  * in the new file. Pass `rendered` (from renderImage) to reuse an already-rendered preview.
  */

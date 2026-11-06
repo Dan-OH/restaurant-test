@@ -16,10 +16,15 @@ edit mode:
 
 - Every piece of page text gets a dashed outline. Click it, type, then click away (or press Enter)
   to save. Escape cancels. Multi-line fields like opening hours accept Enter for new lines.
-- The homepage hero image has a panel in its top-right corner. **Add / Replace** (click or drag and
-  drop a file) opens a crop & resize dialog: drag to position, zoom, pick a shape (21:9, 16:9, 3:2 or
-  the original), and pick an output size. **Crop & resize** reopens the dialog with the previous crop
-  restored. You can also set alt text, or **Remove** the image from the page (it stays in Assets).
+- **Images:** every image spot (the homepage hero, section images…) has an **Edit image** button
+  (**Add image** when empty), or drop a file anywhere on the spot. It opens the image dialog:
+  - **Upload a new image** (crop & resize first), or **Choose from Assets**: **Use this image** shows
+    that same asset here (crop, alt text and optimization shared with everywhere it's used), while
+    **Crop a new version** makes a separate asset for this spot from the same original, with nothing
+    uploaded again.
+  - Below that, the same editor as the Assets page: preview, **Crop & resize** (previous crop
+    restored), details, where it's used, alt text, and **Optimize** with the before/after compare.
+  - **Remove from this spot** takes it off the page; it stays in Assets.
 - **Variables:** while editing text, type `{{` (or click **Insert variable** in the admin bar) to
   insert a site variable such as the address or phone number. It shows as a tinted chip in edit mode
   and as plain text to visitors, and always displays the variable's current value. Hover a chip for
@@ -185,7 +190,10 @@ src/
     theme.js, AdminTheme.jsx   MUI theme and provider (includes ConfirmProvider)
     confirm.js, ConfirmProvider.jsx  useConfirm(): MUI confirm/alert dialogs, type-to-confirm deletes
     AdminBar.jsx               sticky logged-in bar with the edit-mode toggle
-    ImageControls.jsx          upload/crop/replace/remove panel for EditableImage
+    ImageControls.jsx          "Edit image" button + image dialog for an EditableImage spot
+    AssetEditor.jsx            shared asset editor (crop, details, alt text, optimize); used by the
+                               image dialog and the Assets page
+    AssetPicker.jsx            "Choose from Assets" dialog
     mediaOps.js                create / re-render / delete media (shared by editor and Assets)
     usePersistentState.js      remembers view preferences (e.g. Assets sort) in localStorage
     ImageCropper.jsx           crop & resize dialog (react-easy-crop)

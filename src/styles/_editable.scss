@@ -76,3 +76,9 @@ div.editable:empty {
     background: color-mix(in srgb, $danger 14%, transparent);
   }
 }
+
+// An image spot while a file is dragged over it in edit mode (drop to upload).
+.is-drop-target {
+  outline: 3px dashed #2e5e4e;
+  outline-offset: -3px;
+}
