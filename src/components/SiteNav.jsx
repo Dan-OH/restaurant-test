@@ -6,8 +6,9 @@ import { publicNav } from '../lib/nav'
 
 /**
  * Header navigation built from Pages: pages are links, navigation groups are dropdowns (groups
- * inside groups open as side menus). Dropdowns open on hover and keyboard focus (CSS), and
- * by clicking the group name (for touch screens).
+ * inside groups open as side menus). A dropdown opens when its group name is clicked (or
+ * activated with Enter/Space), and closes on a second click, a click elsewhere, Escape,
+ * choosing a page, or tabbing out of the navigation.
  */
 export default function SiteNav() {
   const { pages, navGroups } = useSite()
@@ -15,7 +16,7 @@ export default function SiteNav() {
   const [openPath, setOpenPath] = useState([]) // ids of the open group and its open sub-groups
   const navRef = useRef(null)
 
-  // Close open dropdowns when clicking elsewhere, pressing Escape, or changing page.
+  // Close open dropdowns when clicking elsewhere, pressing Escape, or moving focus out of the nav.
   useEffect(() => {
     if (!openPath.length) return
     function onPointer(e) {
@@ -24,11 +25,16 @@ export default function SiteNav() {
     function onKey(e) {
       if (e.key === 'Escape') setOpenPath([])
     }
+    function onFocus(e) {
+      if (!navRef.current?.contains(e.target)) setOpenPath([])
+    }
     document.addEventListener('pointerdown', onPointer)
     document.addEventListener('keydown', onKey)
+    document.addEventListener('focusin', onFocus)
     return () => {
       document.removeEventListener('pointerdown', onPointer)
       document.removeEventListener('keydown', onKey)
+      document.removeEventListener('focusin', onFocus)
     }
   }, [openPath])
 

@@ -103,7 +103,7 @@
   background: $surface;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
 
-  // Hidden until hovered, focused or opened with the toggle.
+  // Hidden until opened by clicking the group name.
   visibility: hidden;
   opacity: 0;
   transform: translateY(4px);
@@ -127,19 +127,9 @@
     }
   }
 
-  // An invisible bridge so moving the pointer down to the menu doesn't close it.
-  &::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 100%;
-    height: 0.6rem;
-  }
 }
 
-.has-dropdown:hover > .nav-dropdown,
-.has-dropdown:focus-within > .nav-dropdown,
+// Dropdowns open on click (SiteNav toggles .is-open), not on hover.
 .has-dropdown.is-open > .nav-dropdown {
   visibility: visible;
   opacity: 1;
@@ -159,16 +149,6 @@
   top: -0.45rem;
   left: 100%;
   transform: translateX(4px);
-
-  // Bridge on the left instead of the top.
-  &::before {
-    top: 0;
-    bottom: 0;
-    right: 100%;
-    left: auto;
-    width: 0.6rem;
-    height: auto;
-  }
 }
 
 .is-submenu.is-open > .nav-group-toggle .nav-caret {
