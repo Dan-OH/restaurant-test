@@ -11,6 +11,7 @@ import Typography from '@mui/material/Typography'
 import CropIcon from '@mui/icons-material/Crop'
 import OpenInNewIcon from '@mui/icons-material/OpenInNew'
 import { imageUrl } from '../lib/api'
+import { formatSize } from '../lib/images'
 import { findUsages, formatBytes, formatType } from '../lib/media'
 import { useSite } from '../lib/site'
 import ImageCropper from './ImageCropper.jsx'
@@ -18,22 +19,25 @@ import { mediaSettings, rerenderMedia, sourceUrl } from './mediaOps'
 import OptimizePanel from './dashboard/OptimizePanel.jsx'
 
 /**
- * Editing tools for one asset: preview, crop & resize, details, where it's used, alt text and
+ * Editing tools for one asset: preview, crop, details, where it's used, alt text and
  * optimization. Shared by the Assets page's detail dialog and the page editor's image dialog,
  * so both work the same way. Render inside a DialogContent; use key={media.id}.
  *
- * `cropperProps` (aspects, defaultAspect…) customise the cropper for the spot being edited.
+ * Cropping keeps the size the asset was made for (settings.target, e.g. 1920×720 for the
+ * hero); fitting an image to a different spot is done from the page editor's image dialog.
  * `onBusyChange(busy)` lets the surrounding dialog block closing while something saves.
  */
-export default function AssetEditor({ media, cropperProps, onBusyChange }) {
+export default function AssetEditor({ media, onBusyChange }) {
   const site = useSite()
   const [alt, setAlt] = useState(media.alt)
-  const [cropping, setCropping] = useState(null) // { src, initial }
+  const [cropping, setCropping] = useState(null) // { src } while the cropper is open
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState(null)
 
   const usages = findUsages(site.content, media.id, { pages: site.pages, sections: site.pageSections })
   const altDirty = alt.trim() !== media.alt
+  const settings = mediaSettings(media)
+  const tooSmall = settings.target && media.width && media.width < settings.target.width
 
   useEffect(() => {
     onBusyChange?.(busy)
@@ -59,8 +63,8 @@ export default function AssetEditor({ media, cropperProps, onBusyChange }) {
     run(() => site.updateMedia(media.id, { alt: next }), 'Alt text saved.').then((ok) => ok && setAlt(next))
   }
 
-  async function saveCrop(settings) {
-    const ok = await run(() => rerenderMedia(site, media, settings), 'Crop saved.')
+  async function saveCrop({ area, target }) {
+    const ok = await run(() => rerenderMedia(site, media, { area, target }), 'Crop saved.')
     if (ok) setCropping(null)
   }
 
@@ -88,16 +92,21 @@ export default function AssetEditor({ media, cropperProps, onBusyChange }) {
               size="small"
               startIcon={<CropIcon />}
               disabled={busy}
-              onClick={() =>
-                setCropping({ src: sourceUrl(media), initial: media.settings ? mediaSettings(media) : null })
-              }
+              // Capture the URL once: it has a cache-busting timestamp.
+              onClick={() => setCropping({ src: sourceUrl(media) })}
             >
-              Crop &amp; resize
+              Crop
             </Button>
             <Button size="small" startIcon={<OpenInNewIcon />} href={imageUrl(media.path)} target="_blank" rel="noreferrer">
               Open file
             </Button>
           </Stack>
+          {tooSmall && (
+            <Alert severity="warning" sx={{ mt: 1.5 }}>
+              This image is {formatSize(media)} but is used at {formatSize(settings.target)}, so it may look
+              blurry. A larger image will look sharper.
+            </Alert>
+          )}
           {usages.length > 1 && (
             <Typography variant="caption" component="p" sx={{ color: 'text.secondary', mt: 1 }}>
               Used in {usages.length} places: crop, alt text and optimization changes apply to all of them.
@@ -130,6 +139,7 @@ export default function AssetEditor({ media, cropperProps, onBusyChange }) {
             <Typography variant="subtitle2" gutterBottom>
               Details
             </Typography>
+            <DetailRow label="Used at" value={settings.target ? `${formatSize(settings.target)}px` : '—'} />
             <DetailRow label="Dimensions" value={media.width ? `${media.width} × ${media.height}px` : '—'} />
             <DetailRow label="File size" value={formatBytes(media.size)} />
             <DetailRow label="Format" value={formatType(media.mime_type)} />
@@ -187,9 +197,9 @@ export default function AssetEditor({ media, cropperProps, onBusyChange }) {
 
       {cropping && (
         <ImageCropper
-          {...cropperProps}
           src={cropping.src}
-          initial={cropping.initial}
+          target={settings.target}
+          initialArea={settings.area}
           busy={busy}
           error={message?.severity === 'error' ? message.text : null}
           onCancel={() => setCropping(null)}

@@ -6,6 +6,9 @@ import { useSite } from '../lib/site'
 import { usePageMeta } from '../lib/seo'
 import { systemPage } from '../lib/pages'
 
+// Size hero images are cropped and scaled to.
+const HERO_SIZE = { width: 1920, height: 720 }
+
 export default function Home() {
   const { editing, pages } = useSite()
   const page = systemPage(pages, 'home')
@@ -14,7 +17,7 @@ export default function Home() {
   return (
     <>
       <section className="hero">
-        <EditableImage id="home.hero.image" folder="hero" className="hero-image" label="hero image" />
+        <EditableImage id="home.hero.image" folder="hero" className="hero-image" label="hero image" size={HERO_SIZE} />
         <div className="container hero-content">
           <EditableText id="home.hero.title" as="h1">
             Seasonal food, made with care

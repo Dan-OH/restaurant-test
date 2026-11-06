@@ -18,12 +18,19 @@ edit mode:
   to save. Escape cancels. Multi-line fields like opening hours accept Enter for new lines.
 - **Images:** every image spot (the homepage hero, section images…) has an **Edit image** button
   (**Add image** when empty), or drop a file anywhere on the spot. It opens the image dialog:
-  - **Upload a new image** (crop & resize first), or **Choose from Assets**: **Use this image** shows
-    that same asset here (crop, alt text and optimization shared with everywhere it's used), while
-    **Crop a new version** makes a separate asset for this spot from the same original, with nothing
-    uploaded again.
-  - Below that, the same editor as the Assets page: preview, **Crop & resize** (previous crop
-    restored), details, where it's used, alt text, and **Optimize** with the before/after compare.
+  - **Sizes come from the spot**, not the crop tool: the homepage hero is 1920×720, created pages'
+    headers 1920×600, and section images use the section's **Image size** setting (e.g. the Image
+    section defaults to 1920×1080). The cropper is locked to that shape and the result is scaled to
+    that width. Smaller images can still be used, with a warning that they may look blurry.
+  - **Upload a new image** (cropped to the spot's size first), or **Choose from Assets**: an asset
+    with the spot's shape can be used as is (**Use this image**; crop, alt text and optimization are
+    shared with everywhere it's used) or as a separate copy (**Crop a new version**). An asset with a
+    different shape gets **Crop to fit**, which makes a fitted version from the same original, with
+    nothing uploaded again.
+  - If the image doesn't match the spot's size (e.g. after changing a section's image size), the
+    **Edit image** button turns orange and the dialog offers **Crop to fit**.
+  - Below that, the same editor as the Assets page: preview, **Crop** (previous crop restored),
+    details, where it's used, alt text, and **Optimize** (format and quality) with the before/after compare.
   - **Remove from this spot** takes it off the page; it stays in Assets.
 - **Variables:** while editing text, type `{{` (or click **Insert variable** in the admin bar) to
   insert a site variable such as the address or phone number. It shows as a tinted chip in edit mode
@@ -54,8 +61,8 @@ The admin bar also links to the **Dashboard** (`/admin`), where site-wide settin
   format, and warnings for missing alt text. Search; sort by date, name, file size, dimensions or
   usage; group by page or by feature (hero images, slideshows…); filter by in use / not used / missing
   alt text. Sort and grouping choices are remembered in your browser. Open an
-  image to edit its alt text, crop & resize it, **optimize** it (format WebP/AVIF/JPEG, quality,
-  maximum width, with a live before/after file size preview), or delete it (also removes it from
+  image to edit its alt text, re-crop it (at the size it was made for), **optimize** it (format
+  WebP/AVIF/JPEG and quality, with a live before/after file size preview), or delete it (also removes it from
   any page using it).
 - **Variables:** reusable text (address, phone, restaurant name…). Create, edit and delete
   variables; each shows its `{{key}}` token (click to copy), its value and which pages use it.
@@ -127,7 +134,11 @@ and add it to the `NAV` list in `AdminLayout.jsx`.
   with a new unique `id`.
 - **Images:** a media library. Each image is a row in the `media` table: the file visitors see
   (`path`), the uncropped original (`original_path`, max 3200px), the `settings` used to render one
-  from the other (`{ aspect, area, width, format, quality }`), alt text, dimensions and file sizes.
+  from the other (`{ target, area, format, quality }`: `target` is the size the image is for,
+  `area` the crop in original pixels), alt text, dimensions and file sizes. Image sizes are set by
+  where an image goes: `<EditableImage size={{ width, height }}>` in templates, and "WIDTHxHEIGHT"
+  choice settings for sections (see `src/sections/types.js`). The output is exactly the target size
+  when the original is big enough, otherwise the crop's own size at the same shape.
   Image files are stored in the public `site-images` Supabase Storage bucket (10 MB limit, images only).
   Cropping and optimizing always re-render from the original, so repeated edits never lose quality.
   Placements on the page (`<EditableImage id="home.hero.image" ...>`) store a media id in
@@ -196,7 +207,7 @@ src/
     AssetPicker.jsx            "Choose from Assets" dialog
     mediaOps.js                create / re-render / delete media (shared by editor and Assets)
     usePersistentState.js      remembers view preferences (e.g. Assets sort) in localStorage
-    ImageCropper.jsx           crop & resize dialog (react-easy-crop)
+    ImageCropper.jsx           crop dialog locked to the spot's size (react-easy-crop)
     Login.jsx                  staff login page
     SortableList.jsx           drag & drop lists (menu editor, pages)
     FieldHint.jsx              helper text with a character counter

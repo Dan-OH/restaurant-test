@@ -24,15 +24,18 @@ import CropIcon from '@mui/icons-material/Crop'
 import PhotoLibraryOutlinedIcon from '@mui/icons-material/PhotoLibraryOutlined'
 import SearchIcon from '@mui/icons-material/Search'
 import { imageUrl } from '../lib/api'
+import { formatSize, sameShape } from '../lib/images'
 import { findUsages, formatBytes } from '../lib/media'
+import { mediaSettings } from './mediaOps'
 import { useSite } from '../lib/site'
 
 /**
- * Dialog for picking an existing asset for an image spot.
- *  - onUse(asset): use that exact asset here (shared crop, alt text and optimization).
+ * Dialog for picking an existing asset for an image spot that needs `target` ({ width, height }).
+ *  - onUse(asset): use it here. Assets with the spot's shape are used as is (shared crop, alt
+ *    text and optimization); others open the cropper to make a fitted version.
  *  - onCropNew(asset): crop a new version of it for this spot (shares the original only).
  */
-export default function AssetPicker({ currentId, busy, error, onUse, onCropNew, onClose }) {
+export default function AssetPicker({ currentId, target, busy, error, onUse, onCropNew, onClose }) {
   const site = useSite()
   const theme = useTheme()
   const fullScreen = useMediaQuery(theme.breakpoints.down('sm'))
@@ -45,11 +48,12 @@ export default function AssetPicker({ currentId, busy, error, onUse, onCropNew, 
         .sort((a, b) => b.created_at.localeCompare(a.created_at))
         .map((m) => ({
           ...m,
+          fits: !target || sameShape(mediaSettings(m).target, target),
           pages: [
             ...new Set(findUsages(site.content, m.id, { pages: site.pages, sections: site.pageSections }).map((u) => u.page)),
           ],
         })),
-    [site.media, site.content, site.pages, site.pageSections],
+    [site.media, site.content, site.pages, site.pageSections, target],
   )
 
   const q = query.trim().toLowerCase()
@@ -122,6 +126,7 @@ export default function AssetPicker({ currentId, busy, error, onUse, onCropNew, 
                   asset={asset}
                   selected={asset.id === selectedId}
                   current={asset.id === currentId}
+                  showFit={Boolean(target)}
                   onSelect={() => setSelectedId(asset.id)}
                   onUse={() => !busy && onUse(asset)}
                 />
@@ -136,37 +141,42 @@ export default function AssetPicker({ currentId, busy, error, onUse, onCropNew, 
 
       <DialogActions sx={{ px: 3, py: 1.5, flexWrap: 'wrap', gap: 1 }}>
         <Typography variant="body2" sx={{ color: 'text.secondary', flex: 1, minWidth: 200 }}>
-          {selected
-            ? selected.id === currentId
+          {!selected
+            ? 'Select an image. Double-click to use it straight away.'
+            : selected.id === currentId
               ? 'This image is already used here.'
-              : '“Use this image” shares its crop and settings with other places it\'s used. “Crop a new version” makes a separate copy for this spot.'
-            : 'Select an image. Double-click to use it straight away.'}
+              : selected.fits
+                ? '“Use this image” shares its crop and settings with other places it\'s used. “Crop a new version” makes a separate copy for this spot.'
+                : `This image is a different shape, so you'll crop a version that fits this spot (${formatSize(target)}).`}
         </Typography>
         <Button onClick={onClose} disabled={busy}>
           Cancel
         </Button>
-        <Button
-          variant="outlined"
-          startIcon={<CropIcon />}
-          disabled={!selected || busy}
-          onClick={() => onCropNew(selected)}
-        >
-          Crop a new version
-        </Button>
+        {(!selected || selected.fits) && (
+          <Button
+            variant="outlined"
+            startIcon={<CropIcon />}
+            disabled={!selected || busy}
+            onClick={() => onCropNew(selected)}
+          >
+            Crop a new version
+          </Button>
+        )}
         <Button
           variant="contained"
+          startIcon={selected && !selected.fits ? <CropIcon /> : undefined}
           loading={busy}
           disabled={!selected || selected.id === currentId}
           onClick={() => onUse(selected)}
         >
-          Use this image
+          {selected && !selected.fits ? 'Crop to fit' : 'Use this image'}
         </Button>
       </DialogActions>
     </Dialog>
   )
 }
 
-function AssetCard({ asset, selected, current, onSelect, onUse }) {
+function AssetCard({ asset, selected, current, showFit, onSelect, onUse }) {
   return (
     <Card
       variant="outlined"
@@ -199,6 +209,14 @@ function AssetCard({ asset, selected, current, onSelect, onUse }) {
           </Typography>
           <Stack direction="row" spacing={0.5} useFlexGap sx={{ flexWrap: 'wrap', mt: 0.5 }}>
             {current && <Chip size="small" color="primary" label="Current" />}
+            {showFit && (
+              <Chip
+                size="small"
+                color={asset.fits ? 'success' : 'default'}
+                variant="outlined"
+                label={asset.fits ? 'Fits this spot' : 'Different shape'}
+              />
+            )}
             {asset.pages.length ? (
               asset.pages.map((p) => <Chip key={p} size="small" variant="outlined" label={p} />)
             ) : (

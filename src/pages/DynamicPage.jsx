@@ -7,6 +7,9 @@ import { usePageMeta } from '../lib/seo'
 import { useSite } from '../lib/site'
 import NotFound from './NotFound.jsx'
 
+// Size page header images are cropped and scaled to.
+const HEADER_SIZE = { width: 1920, height: 600 }
+
 /** A page created in the dashboard, served at /<slug>. Drafts are only loaded for logged-in users. */
 export default function DynamicPage() {
   const { slug } = useParams()
@@ -33,7 +36,13 @@ function BasicTemplate({ page }) {
   return (
     <>
       <section className="hero hero--compact">
-        <EditableImage id={`${prefix}.hero.image`} folder="pages" className="hero-image" label="header image" />
+        <EditableImage
+          id={`${prefix}.hero.image`}
+          folder="pages"
+          className="hero-image"
+          label="header image"
+          size={HEADER_SIZE}
+        />
         <div className="container hero-content">
           <EditableText id={`${prefix}.heading`} as="h1">
             {page.title}

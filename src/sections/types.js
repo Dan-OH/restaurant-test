@@ -13,7 +13,13 @@
  *   { key, label, type: 'choice', options: [{ value, label }], default }
  *   { key, label, type: 'boolean', default }
  * images: the section's image slots ({ field: label }), stored as "section-<id>.<field>".
+ *
+ * Image sizes: a choice setting whose values are "WIDTHxHEIGHT" (see sizeOption below) sets the
+ * size images in that section are cropped to. Components read it with parseSize().
  */
+
+// Size choices for section images, as "WIDTHxHEIGHT" values.
+const sizeOption = (width, height, name) => ({ value: `${width}x${height}`, label: `${name} · ${width}×${height}` })
 export const SECTION_TYPES = {
   text: {
     label: 'Text',
@@ -37,6 +43,18 @@ export const SECTION_TYPES = {
     description: 'Text beside an image. Choose which side the image goes on.',
     settings: [
       {
+        key: 'imageSize',
+        label: 'Image size',
+        type: 'choice',
+        default: '1200x900',
+        options: [
+          sizeOption(1200, 900, 'Standard 4:3'),
+          sizeOption(1200, 800, 'Landscape 3:2'),
+          sizeOption(1200, 1200, 'Square'),
+          sizeOption(960, 1200, 'Portrait 4:5'),
+        ],
+      },
+      {
         key: 'imagePosition',
         label: 'Image position',
         type: 'choice',
@@ -54,6 +72,18 @@ export const SECTION_TYPES = {
     description: 'One large image with an optional caption.',
     settings: [
       {
+        key: 'size',
+        label: 'Image size',
+        type: 'choice',
+        default: '1920x1080',
+        options: [
+          sizeOption(1920, 1080, 'Widescreen 16:9'),
+          sizeOption(1920, 820, 'Panorama 21:9'),
+          sizeOption(1600, 1200, 'Standard 4:3'),
+          sizeOption(1400, 1400, 'Square'),
+        ],
+      },
+      {
         key: 'width',
         label: 'Width',
         type: 'choice',
@@ -69,7 +99,20 @@ export const SECTION_TYPES = {
   twoImages: {
     label: 'Two images',
     description: 'Two images side by side, each with an optional caption.',
-    settings: [],
+    settings: [
+      {
+        key: 'imageSize',
+        label: 'Image size',
+        type: 'choice',
+        default: '1200x900',
+        options: [
+          sizeOption(1200, 900, 'Standard 4:3'),
+          sizeOption(1200, 800, 'Landscape 3:2'),
+          sizeOption(1200, 1200, 'Square'),
+          sizeOption(960, 1200, 'Portrait 4:5'),
+        ],
+      },
+    ],
     images: { image1: 'Left image', image2: 'Right image' },
   },
 }
@@ -86,12 +129,13 @@ export function sectionPrefix(section) {
   return `section-${section.id}`
 }
 
-// Crop shapes offered when adding images to sections.
-export const SECTION_IMAGE_ASPECTS = [
-  { key: '4:3', label: '4:3', value: 4 / 3 },
-  { key: '3:2', label: '3:2', value: 3 / 2 },
-  { key: '1:1', label: 'Square', value: 1 },
-  { key: '16:9', label: '16:9', value: 16 / 9 },
-  { key: '21:9', label: 'Wide 21:9', value: 21 / 9 },
-  { key: 'original', label: 'Original', value: null },
-]
+/** "1920x1080" → { width: 1920, height: 1080 } */
+export function parseSize(value) {
+  const [width, height] = String(value).split('x').map(Number)
+  return width && height ? { width, height } : null
+}
+
+/** CSS custom property that sets an image slot's shape, e.g. --aspect: 1920 / 1080. */
+export function aspectStyle(size) {
+  return size ? { '--aspect': `${size.width} / ${size.height}` } : undefined
+}

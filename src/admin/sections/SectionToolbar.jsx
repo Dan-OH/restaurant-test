@@ -168,9 +168,12 @@ function SectionSettings({ section, type, onError }) {
               value={settings[s.key]}
               onChange={(_, v) => v != null && change(s.key, v)}
               aria-label={s.label}
+              // Longer lists (e.g. image sizes) stack so their labels fit.
+              orientation={s.options.length > 2 ? 'vertical' : 'horizontal'}
+              fullWidth={s.options.length > 2}
             >
               {s.options.map((o) => (
-                <ToggleButton key={o.value} value={o.value}>
+                <ToggleButton key={o.value} value={o.value} sx={{ justifyContent: 'flex-start', textAlign: 'left' }}>
                   {o.label}
                 </ToggleButton>
               ))}
@@ -178,8 +181,10 @@ function SectionSettings({ section, type, onError }) {
           </div>
         )
       })}
-      <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+      <Typography variant="caption" sx={{ color: 'text.secondary', maxWidth: 280 }}>
         Changes are saved automatically.
+        {type.settings.some((t) => t.key === 'size' || t.key === 'imageSize') &&
+          ' After changing the image size, use Edit image → Crop to fit on images already added.'}
       </Typography>
     </Stack>
   )

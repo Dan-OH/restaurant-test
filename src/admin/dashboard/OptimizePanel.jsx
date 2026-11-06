@@ -16,7 +16,7 @@ import { imageUrl } from '../../lib/api'
 import { canEncode, renderImage } from '../../lib/images'
 import { formatBytes, formatType } from '../../lib/media'
 import { useSite } from '../../lib/site'
-import { mediaSettings, rerenderMedia, sourceUrl } from '../mediaOps'
+import { mediaSettings, renderOptions, rerenderMedia, sourceUrl } from '../mediaOps'
 import CompareDialog from './CompareDialog.jsx'
 
 const FORMATS = [
@@ -24,24 +24,19 @@ const FORMATS = [
   { value: 'image/avif', label: 'AVIF', hint: 'Smallest files; slower to encode.' },
   { value: 'image/jpeg', label: 'JPEG', hint: 'Largest files, but works everywhere.' },
 ]
-const WIDTHS = [800, 1200, 1600, 2400, 3200]
 
 /**
- * Re-encodes an image from its original with a chosen format, quality and maximum width,
- * previewing the resulting file size before applying.
+ * Re-encodes an image from its original with a chosen format and quality, previewing the
+ * resulting file size before applying. The image's dimensions come from where it's used
+ * (its target size), so they aren't chosen here.
  */
 export default function OptimizePanel({ media, disabled, onApplied }) {
   const site = useSite()
   const current = useMemo(() => mediaSettings(media), [media])
   const formats = useMemo(() => FORMATS.filter((f) => canEncode(f.value)), [])
 
-  // Widest output possible: the crop area, or the whole original.
-  const maxWidth = Math.round(current.area?.width || media.original_width || media.width || 3200)
-  const widths = [...new Set([...WIDTHS.filter((w) => w < maxWidth), maxWidth])]
-
   const [format, setFormat] = useState(formats.some((f) => f.value === current.format) ? current.format : 'image/webp')
   const [quality, setQuality] = useState(Math.round((current.quality ?? 0.85) * 100))
-  const [width, setWidth] = useState(Math.min(current.width || maxWidth, maxWidth))
   const [preview, setPreview] = useState(null) // { result, url, key }
   const [loading, setLoading] = useState(false)
   const [applying, setApplying] = useState(false)
@@ -49,10 +44,9 @@ export default function OptimizePanel({ media, disabled, onApplied }) {
   const [comparing, setComparing] = useState(false)
   const [src] = useState(() => sourceUrl(media))
 
-  const changed =
-    format !== current.format || quality !== Math.round((current.quality ?? 0.85) * 100) || width !== current.width
+  const changed = format !== current.format || quality !== Math.round((current.quality ?? 0.85) * 100)
   // Identifies the settings a preview was rendered with, so a stale preview is never applied.
-  const settingsKey = `${format}|${quality}|${width}`
+  const settingsKey = `${format}|${quality}`
 
   // Re-render a preview shortly after settings change, to show the resulting file size.
   useEffect(() => {
@@ -62,9 +56,9 @@ export default function OptimizePanel({ media, disabled, onApplied }) {
       setLoading(true)
       setError(null)
       try {
-        const result = await renderImage(src, { ...current, format, quality: quality / 100, width })
+        const result = await renderImage(src, renderOptions({ ...current, format, quality: quality / 100 }))
         if (cancelled) return
-        setPreview({ result, url: URL.createObjectURL(result.file), key: `${format}|${quality}|${width}` })
+        setPreview({ result, url: URL.createObjectURL(result.file), key: `${format}|${quality}` })
       } catch (e) {
         if (!cancelled) setError(e.message)
       } finally {
@@ -75,7 +69,7 @@ export default function OptimizePanel({ media, disabled, onApplied }) {
       cancelled = true
       clearTimeout(timer)
     }
-  }, [format, quality, width, src, changed, current])
+  }, [format, quality, src, changed, current])
 
   // Free each preview's object URL once it's replaced or the panel closes.
   useEffect(() => () => preview && URL.revokeObjectURL(preview.url), [preview])
@@ -84,7 +78,7 @@ export default function OptimizePanel({ media, disabled, onApplied }) {
     setApplying(true)
     setError(null)
     try {
-      await rerenderMedia(site, media, { format, quality: quality / 100, width }, preview?.result)
+      await rerenderMedia(site, media, { format, quality: quality / 100 }, preview?.result)
       setPreview(null)
       setComparing(false)
       onApplied?.()
@@ -147,25 +141,6 @@ export default function OptimizePanel({ media, disabled, onApplied }) {
             ]}
             sx={{ mx: 1, width: 'calc(100% - 16px)' }}
           />
-        </div>
-
-        <div>
-          <Typography variant="subtitle2" gutterBottom>
-            Maximum width
-          </Typography>
-          <ToggleButtonGroup
-            exclusive
-            size="small"
-            value={width}
-            onChange={(_, v) => v && setWidth(v)}
-            sx={{ flexWrap: 'wrap' }}
-          >
-            {widths.map((w) => (
-              <ToggleButton key={w} value={w}>
-                {w === maxWidth ? `Full (${w}px)` : `${w}px`}
-              </ToggleButton>
-            ))}
-          </ToggleButtonGroup>
         </div>
 
         <Stack direction="row" spacing={2} sx={{ p: 1.5, borderRadius: 1, bgcolor: 'action.hover', alignItems: 'center' }}>

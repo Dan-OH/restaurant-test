@@ -20,21 +20,26 @@ import FileUploadOutlinedIcon from '@mui/icons-material/FileUploadOutlined'
 import LinkOffIcon from '@mui/icons-material/LinkOff'
 import PhotoLibraryOutlinedIcon from '@mui/icons-material/PhotoLibraryOutlined'
 import { useSite } from '../lib/site'
-import { hashFile, prepareImage } from '../lib/images'
+import { formatSize, hashFile, prepareImage, sameShape } from '../lib/images'
+import { findUsages } from '../lib/media'
 import AdminTheme from './AdminTheme.jsx'
 import AssetEditor, { AssetsPageLink } from './AssetEditor.jsx'
 import AssetPicker from './AssetPicker.jsx'
 import ImageCropper from './ImageCropper.jsx'
 import { useConfirm } from './confirm'
-import { createMediaFromExisting, createMediaFromFile, sourceUrl } from './mediaOps'
+import { createMediaFromExisting, createMediaFromFile, mediaSettings, rerenderMedia, sourceUrl } from './mediaOps'
 
 const MAX_BYTES = 10 * 1024 * 1024
 
 /**
  * Edit-mode control for an EditableImage spot: a single "Edit image" button that opens a
  * dialog with the spot's options (upload, choose from Assets, remove) and the same asset
- * editor as the Assets page (crop & resize, alt text, optimize). Dropping a file anywhere on
- * the spot uploads it.
+ * editor as the Assets page (crop, alt text, optimize). Dropping a file anywhere on the spot
+ * uploads it.
+ *
+ * `size` ({ width, height }) is what this spot needs: new images are cropped to it, chosen
+ * assets of a different shape get a fitted version, and a mismatched image (e.g. after a
+ * section's size setting changes) offers "Crop to fit".
  */
 export default function ImageControls(props) {
   return (
@@ -44,7 +49,7 @@ export default function ImageControls(props) {
   )
 }
 
-function Controls({ id, folder, label, media, cropperProps }) {
+function Controls({ id, folder, label, media, size }) {
   const site = useSite()
   const { confirm } = useConfirm()
   const anchorRef = useRef(null)
@@ -54,8 +59,12 @@ function Controls({ id, folder, label, media, cropperProps }) {
   const [editorBusy, setEditorBusy] = useState(false)
   const [error, setError] = useState(null)
   const [picking, setPicking] = useState(false)
-  // What the cropper is working on: a newly chosen file, or an asset to make a new crop of.
-  const [session, setSession] = useState(null) // { src, file?, hash?, name?, fromAsset? }
+  // What the cropper is working on: a newly chosen file, an asset to make a fitted version of,
+  // or this spot's own asset being re-cropped to fit.
+  const [session, setSession] = useState(null) // { src, file?, hash?, name?, fromAsset?, recrop?, initialArea? }
+
+  // Does this spot's image have the shape the spot needs?
+  const mismatch = Boolean(media && size && !sameShape(mediaSettings(media).target, size))
 
   // Free the object URL created for a newly chosen file.
   useEffect(() => {
@@ -122,8 +131,12 @@ function Controls({ id, folder, label, media, cropperProps }) {
     }
   }, [])
 
-  // Use an existing asset here as is.
+  // Use an existing asset here: as is if it has this spot's shape, otherwise crop a fitted version.
   async function applyAsset(asset) {
+    if (size && !sameShape(mediaSettings(asset).target, size)) {
+      cropNewFromAsset(asset)
+      return
+    }
     setBusy(true)
     setError(null)
     try {
@@ -143,11 +156,25 @@ function Controls({ id, folder, label, media, cropperProps }) {
     setSession({ src: sourceUrl(asset), file: null, fromAsset: asset })
   }
 
-  // Saving the cropper for a new upload or a new version creates the asset and puts it here.
+  // Make this spot's image fit the spot's size. If it's only used here, re-crop it in place;
+  // otherwise make a fitted version for this spot so other places aren't changed.
+  function fitToSpot() {
+    setError(null)
+    const usages = findUsages(site.content, media.id, { pages: site.pages, sections: site.pageSections })
+    if (usages.length <= 1) setSession({ src: sourceUrl(media), file: null, recrop: true })
+    else cropNewFromAsset(media)
+  }
+
+  // Saving the cropper: re-crop this spot's asset, or create a new asset and put it here.
   async function handleCropSave(settings) {
     setBusy(true)
     setError(null)
     try {
+      if (session.recrop) {
+        await rerenderMedia(site, media, settings)
+        setSession(null)
+        return
+      }
       const created = session.fromAsset
         ? await createMediaFromExisting(site, session.fromAsset, settings, folder)
         : await createMediaFromFile(site, {
@@ -188,8 +215,10 @@ function Controls({ id, folder, label, media, cropperProps }) {
         <Button
           variant="contained"
           size="small"
+          color={mismatch ? 'warning' : 'primary'}
           startIcon={media ? <EditIcon /> : <AddPhotoAlternateIcon />}
           onClick={() => setOpen(true)}
+          title={mismatch ? `This image doesn't match the ${formatSize(size)} size this spot uses` : undefined}
           sx={{ boxShadow: 3 }}
         >
           {media ? `Edit ${label}` : `Add ${label}`}
@@ -201,7 +230,9 @@ function Controls({ id, folder, label, media, cropperProps }) {
         <SpotDialog
           label={label}
           media={media}
-          cropperProps={cropperProps}
+          size={size}
+          mismatch={mismatch}
+          onFit={fitToSpot}
           busy={busy || editorBusy}
           preparing={busy && !session}
           error={!session && !picking ? error : null}
@@ -223,6 +254,7 @@ function Controls({ id, folder, label, media, cropperProps }) {
       {picking && (
         <AssetPicker
           currentId={media?.id}
+          target={size}
           busy={busy}
           error={error}
           onUse={applyAsset}
@@ -233,9 +265,9 @@ function Controls({ id, folder, label, media, cropperProps }) {
 
       {session && (
         <ImageCropper
-          {...cropperProps}
           src={session.src}
-          initial={null}
+          target={size}
+          initialArea={null}
           busy={busy}
           error={error}
           onCancel={() => {
@@ -252,7 +284,9 @@ function Controls({ id, folder, label, media, cropperProps }) {
 function SpotDialog({
   label,
   media,
-  cropperProps,
+  size,
+  mismatch,
+  onFit,
   busy,
   preparing,
   error,
@@ -279,6 +313,11 @@ function SpotDialog({
     >
       <DialogTitle id="spot-dialog-title" sx={{ pr: 6 }}>
         {title}
+        {size && (
+          <Typography variant="body2" component="span" sx={{ display: 'block', color: 'text.secondary' }}>
+            This spot uses images at {formatSize(size)} pixels.
+          </Typography>
+        )}
         <IconButton aria-label="Close" onClick={onClose} disabled={busy} sx={{ position: 'absolute', right: 8, top: 8 }}>
           <CloseIcon />
         </IconButton>
@@ -326,8 +365,23 @@ function SpotDialog({
           </Alert>
         )}
 
+        {mismatch && (
+          <Alert
+            severity="warning"
+            sx={{ mb: 2 }}
+            action={
+              <Button color="inherit" size="small" onClick={onFit} disabled={busy}>
+                Crop to fit
+              </Button>
+            }
+          >
+            This image is cropped to {formatSize(mediaSettings(media).target)}, but this spot uses{' '}
+            {formatSize(size)}. Crop it to fit so it isn't cut off unexpectedly.
+          </Alert>
+        )}
+
         {media ? (
-          <AssetEditor key={media.id} media={media} cropperProps={cropperProps} onBusyChange={onEditorBusy} />
+          <AssetEditor key={media.id} media={media} onBusyChange={onEditorBusy} />
         ) : (
           <Paper
             variant="outlined"

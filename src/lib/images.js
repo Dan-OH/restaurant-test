@@ -51,18 +51,19 @@ export async function measureImage(src) {
 }
 
 /**
- * Renders an image: crops `area` (source pixels; whole image if omitted), scales it to at most
- * `width` pixels wide (never upscales) and encodes it as `format` at `quality` (0–1).
+ * Renders an image: crops `area` (source pixels; whole image if omitted) and encodes it as
+ * `format` at `quality` (0–1). With `width` and `height`, the output is exactly that size;
+ * with only `width`, it's scaled to at most that wide (never upscaled).
  * Returns { file, width, height }.
  */
-export async function renderImage(src, { area, width, format = 'image/webp', quality = 0.85 } = {}) {
+export async function renderImage(src, { area, width, height, format = 'image/webp', quality = 0.85 } = {}) {
   const img = await loadImage(src)
   const a = area ?? { x: 0, y: 0, width: img.naturalWidth, height: img.naturalHeight }
   const scale = Math.min(1, (width || a.width) / a.width)
 
   const canvas = document.createElement('canvas')
-  canvas.width = Math.max(1, Math.round(a.width * scale))
-  canvas.height = Math.max(1, Math.round(a.height * scale))
+  canvas.width = Math.max(1, Math.round(width && height ? width : a.width * scale))
+  canvas.height = Math.max(1, Math.round(width && height ? height : a.height * scale))
 
   const ctx = canvas.getContext('2d')
   if (format === 'image/jpeg') {
@@ -99,4 +100,31 @@ export function canEncode(type) {
 export async function hashFile(file) {
   const digest = await crypto.subtle.digest('SHA-256', await file.arrayBuffer())
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+/**
+ * Output size for a crop of `area` (source pixels) aimed at `target` ({ width, height }):
+ * the target size when the crop is big enough, otherwise the crop's own size at the target's
+ * shape (never upscaled). `tooSmall` says the result is smaller than the target.
+ */
+export function outputSize(target, area) {
+  if (!target) {
+    return { width: Math.round(area.width), height: Math.round(area.height), tooSmall: false }
+  }
+  const width = Math.min(target.width, Math.round(area.width))
+  return {
+    width,
+    height: Math.max(1, Math.round((width * target.height) / target.width)),
+    tooSmall: width < target.width,
+  }
+}
+
+/** Whether two sizes have the same shape (aspect ratio), within half a percent. */
+export function sameShape(a, b) {
+  if (!a?.width || !a?.height || !b?.width || !b?.height) return false
+  return Math.abs(a.width / a.height / (b.width / b.height) - 1) < 0.005
+}
+
+export function formatSize(size) {
+  return size ? `${size.width} × ${size.height}` : ''
 }

@@ -1,21 +1,25 @@
 import { createMediaSource, deleteImage, deleteMediaSource, findMediaSource, imageUrl, uploadImage } from '../lib/api'
-import { measureImage, renderImage } from '../lib/images'
+import { measureImage, outputSize, renderImage } from '../lib/images'
 import { findUsages, removeFromPlacement } from '../lib/media'
 
 /**
  * Media library operations shared by the page editor and the dashboard's file manager.
  * Each takes `site` (from useSite()) so saves show in the admin save status.
  *
- * A media row's `settings` ({ aspect, area, width, format, quality }) describe how `path`
- * was rendered from `original_path`. Changing crop or optimization re-renders from the
- * original, so quality never degrades over repeated edits.
+ * A media row's `settings` describe how `path` was rendered from `original_path`:
+ *   target   { width, height } the size the image is for, dictated by where it's used
+ *            (e.g. the hero is 1920×720). The crop is locked to this shape and the output is
+ *            never wider than target.width.
+ *   area     the crop, in pixels of the original
+ *   format, quality   encoding (chosen in Optimize)
+ * Changing crop or optimization re-renders from the original, so quality never degrades.
  *
  * Originals are shared: each is a row in media_sources, identified by a hash of the uploaded
  * file. Uploading the same file again reuses the stored original (no second upload) while still
  * creating a separate asset with its own crop and settings.
  */
 
-export const DEFAULT_OUTPUT = { format: 'image/webp', quality: 0.85, width: 2400 }
+export const DEFAULT_OUTPUT = { format: 'image/webp', quality: 0.85 }
 
 /** URL of the source to render from, safe to draw onto a canvas. */
 export function sourceUrl(media) {
@@ -24,13 +28,22 @@ export function sourceUrl(media) {
   return `${imageUrl(media.original_path || media.path)}?edit=${Date.now()}`
 }
 
-/** Effective render settings for a media row, filling in defaults for older rows. */
+/**
+ * Effective render settings for a media row, filling in defaults for older rows
+ * (which get their current dimensions as their target size).
+ */
 export function mediaSettings(media) {
-  return {
-    ...DEFAULT_OUTPUT,
-    width: media.width || DEFAULT_OUTPUT.width,
-    ...(media.settings || {}),
-  }
+  const settings = media.settings || {}
+  const target =
+    settings.target ?? (media.width && media.height ? { width: media.width, height: media.height } : null)
+  return { ...DEFAULT_OUTPUT, ...settings, target }
+}
+
+/** renderImage options for settings: the crop, encoding and exact output size. */
+export function renderOptions(settings) {
+  const { area, target, format, quality } = settings
+  const size = area ? outputSize(target, area) : { width: target?.width }
+  return { area, format, quality, width: size.width, height: size.height }
 }
 
 /**
@@ -72,11 +85,11 @@ async function getOrCreateSource(site, { file, src, hash, folder }) {
  * identifies the uploaded file (see hashFile). Returns the created row.
  */
 export async function createMediaFromFile(site, { file, src, hash, settings, folder, name }) {
-  const full = { ...DEFAULT_OUTPUT, ...settings }
+  const full = { ...DEFAULT_OUTPUT, ...settings } // settings: { area, target }
   const { source, created } = await getOrCreateSource(site, { file, src, hash, folder })
   let renderedPath = null
   try {
-    const rendered = await renderImage(src, full)
+    const rendered = await renderImage(src, renderOptions(full))
     renderedPath = await site.track(() => uploadImage(rendered.file, folder))
 
     return await site.addMedia({
@@ -109,8 +122,9 @@ export async function createMediaFromFile(site, { file, src, hash, settings, fol
  * file; the original is shared. Name and alt text are copied. Returns the created row.
  */
 export async function createMediaFromExisting(site, asset, settings, folder) {
-  const full = { ...DEFAULT_OUTPUT, format: asset.settings?.format ?? DEFAULT_OUTPUT.format, ...settings }
-  const rendered = await renderImage(sourceUrl(asset), full)
+  const { format, quality } = mediaSettings(asset)
+  const full = { format, quality, ...settings } // settings: { area, target }
+  const rendered = await renderImage(sourceUrl(asset), renderOptions(full))
   const path = await site.track(() => uploadImage(rendered.file, folder || folderOf(asset.path)))
   try {
     return await site.addMedia({
@@ -140,7 +154,7 @@ export async function createMediaFromExisting(site, asset, settings, folder) {
  */
 export async function rerenderMedia(site, media, settings, rendered) {
   const full = { ...mediaSettings(media), ...settings }
-  const result = rendered ?? (await renderImage(sourceUrl(media), full))
+  const result = rendered ?? (await renderImage(sourceUrl(media), renderOptions(full)))
   const path = await site.track(() => uploadImage(result.file, folderOf(media.path)))
 
   // Older images have no separate original; the current file becomes the original.

@@ -9,67 +9,51 @@ import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import Slider from '@mui/material/Slider'
 import Stack from '@mui/material/Stack'
-import ToggleButton from '@mui/material/ToggleButton'
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Typography from '@mui/material/Typography'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
 import ZoomInIcon from '@mui/icons-material/ZoomIn'
 import ZoomOutIcon from '@mui/icons-material/ZoomOut'
-
-const DEFAULT_ASPECTS = [
-  { key: '21:9', label: 'Wide 21:9', value: 21 / 9 },
-  { key: '16:9', label: 'Landscape 16:9', value: 16 / 9 },
-  { key: '3:2', label: 'Classic 3:2', value: 3 / 2 },
-  { key: 'original', label: 'Original', value: null }, // uses the image's own shape
-]
-
-const DEFAULT_SIZES = [
-  { label: 'Small', width: 1200 },
-  { label: 'Medium', width: 1600 },
-  { label: 'Large', width: 2400 },
-  { label: 'Extra large', width: 3200 },
-]
+import { formatSize, outputSize } from '../lib/images'
 
 /**
- * Dialog for cropping and resizing an image.
- * `initial` restores a previous session: { aspect, area, width }.
- * `onSave` receives { aspect, area, width } where `area` is in source-image pixels
- * and `width` is the output width actually used (never larger than the crop).
+ * Dialog for cropping an image to the size its spot needs.
+ *
+ * `target` ({ width, height }) comes from where the image is used (e.g. the hero is 1920×720,
+ * section images follow the section's size setting). The crop is locked to that shape and the
+ * result is scaled down to the target width; smaller images are allowed, with a warning.
+ * Without a target (older images) the crop keeps the image's own shape.
+ *
+ * `initialArea` restores a previous crop. onSave({ area, target }) gets the crop in pixels of
+ * the source image.
  */
-export default function ImageCropper({
-  src,
-  initial,
-  aspects = DEFAULT_ASPECTS,
-  sizes = DEFAULT_SIZES,
-  defaultAspect = '16:9',
-  defaultWidth = 2400,
-  busy = false,
-  error,
-  onCancel,
-  onSave,
-}) {
+export default function ImageCropper({ src, target, initialArea, busy = false, error, onCancel, onSave }) {
   const theme = useTheme()
   const fullScreen = useMediaQuery(theme.breakpoints.down('sm'))
 
   const [crop, setCrop] = useState({ x: 0, y: 0 })
   const [zoom, setZoom] = useState(1)
-  const [aspectKey, setAspectKey] = useState(initial?.aspect ?? defaultAspect)
-  const [width, setWidth] = useState(initial?.width ?? defaultWidth)
   const [area, setArea] = useState(null)
   const [natural, setNatural] = useState(null)
   const [mediaError, setMediaError] = useState(false)
 
-  const aspectOption = aspects.find((a) => a.key === aspectKey) ?? aspects[0]
-  const aspect =
-    aspectOption.value ?? (natural ? natural.naturalWidth / natural.naturalHeight : 16 / 9)
-
-  const cropWidth = area ? Math.round(area.width) : 0
-  const outputWidth = Math.min(width, cropWidth || width)
-  const outputHeight = area ? Math.round((area.height / area.width) * outputWidth) : 0
+  const aspect = target
+    ? target.width / target.height
+    : natural
+      ? natural.naturalWidth / natural.naturalHeight
+      : 16 / 9
+  const output = area ? outputSize(target, area) : null
 
   function handleSave() {
-    onSave({ aspect: aspectOption.key, area: roundArea(area), width: outputWidth })
+    onSave({
+      area: {
+        x: Math.round(area.x),
+        y: Math.round(area.y),
+        width: Math.round(area.width),
+        height: Math.round(area.height),
+      },
+      target,
+    })
   }
 
   return (
@@ -81,10 +65,12 @@ export default function ImageCropper({
       fullScreen={fullScreen}
       aria-labelledby="cropper-title"
     >
-      <DialogTitle id="cropper-title">Crop &amp; resize</DialogTitle>
+      <DialogTitle id="cropper-title">Crop image</DialogTitle>
       <DialogContent>
         <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5 }}>
-          Drag to reposition. Use the slider or scroll to zoom.
+          {target
+            ? `This spot uses images at ${formatSize(target)} pixels. Drag to choose what's shown; use the slider or scroll to zoom.`
+            : 'Drag to reposition. Use the slider or scroll to zoom.'}
         </Typography>
 
         <Box
@@ -111,7 +97,7 @@ export default function ImageCropper({
               onZoomChange={setZoom}
               onCropComplete={(_, pixels) => setArea(pixels)}
               onMediaLoaded={setNatural}
-              initialCroppedAreaPixels={initial?.area}
+              initialCroppedAreaPixels={initialArea ?? undefined}
               mediaProps={{ crossOrigin: 'anonymous', onError: () => setMediaError(true) }}
             />
           )}
@@ -131,53 +117,16 @@ export default function ImageCropper({
             <ZoomInIcon sx={{ color: 'text.secondary' }} />
           </Stack>
 
-          <div>
-            <Typography variant="subtitle2" gutterBottom>
-              Shape
-            </Typography>
-            <ToggleButtonGroup
-              exclusive
-              size="small"
-              value={aspectOption.key}
-              onChange={(_, v) => v && setAspectKey(v)}
-              aria-label="Crop shape"
-              sx={{ flexWrap: 'wrap' }}
-            >
-              {aspects.map((a) => (
-                <ToggleButton key={a.key} value={a.key}>
-                  {a.label}
-                </ToggleButton>
-              ))}
-            </ToggleButtonGroup>
-          </div>
-
-          <div>
-            <Typography variant="subtitle2" gutterBottom>
-              Size
-            </Typography>
-            <ToggleButtonGroup
-              exclusive
-              size="small"
-              value={width}
-              onChange={(_, v) => v && setWidth(v)}
-              aria-label="Output size"
-              sx={{ flexWrap: 'wrap' }}
-            >
-              {sizes.map((s) => (
-                <ToggleButton key={s.width} value={s.width} disabled={cropWidth > 0 && s.width > cropWidth}>
-                  {s.label}&nbsp;
-                  <Box component="span" sx={{ opacity: 0.6 }}>
-                    {s.width}px
-                  </Box>
-                </ToggleButton>
-              ))}
-            </ToggleButtonGroup>
-          </div>
-
           <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-            {area ? `Final image: ${outputWidth} × ${outputHeight}px` : 'Loading image…'}
-            {area && width > cropWidth && '. Limited by the crop, since images are never enlarged. Zoom out for larger sizes.'}
+            {output ? `Final image: ${formatSize(output)} pixels` : 'Loading image…'}
           </Typography>
+
+          {output?.tooSmall && (
+            <Alert severity="warning">
+              This image is smaller than {formatSize(target)} at this crop, so it may look blurry on the site.
+              {zoom > 1 ? ' Zooming out uses more of the image.' : ' A larger image will look sharper.'}
+            </Alert>
+          )}
 
           {error && <Alert severity="error">{error}</Alert>}
         </Stack>
@@ -193,13 +142,4 @@ export default function ImageCropper({
       </DialogActions>
     </Dialog>
   )
-}
-
-function roundArea(a) {
-  return {
-    x: Math.round(a.x),
-    y: Math.round(a.y),
-    width: Math.round(a.width),
-    height: Math.round(a.height),
-  }
 }
