@@ -174,8 +174,9 @@ export async function deletePage(page, contentPrefix) {
   check(await supabase.from('pages').delete().eq('id', page.id))
 }
 
-export async function reorderPages(ids) {
-  check(await supabase.rpc('reorder_pages', { ids }))
+/** Saves page nesting and order: items = [{ id, parent_id, position }]. */
+export async function arrangePages(items) {
+  check(await supabase.rpc('arrange_pages', { items }))
 }
 
 // ---- Page sections ----

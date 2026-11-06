@@ -22,13 +22,14 @@
   text-decoration: none;
 }
 
-// Scoped to the site header so it doesn't affect <nav> elements in admin UI.
-.site-header nav {
-  display: flex;
-  gap: 1.25rem;
-  align-items: center;
-  flex-wrap: wrap;
+// Header navigation (components/SiteNav.jsx). Scoped to the site header so it doesn't affect
+// <nav> elements in admin UI.
+.site-header {
+  position: relative;
+  z-index: 50; // dropdowns overlap the page content (e.g. the hero)
+}
 
+.site-header nav {
   a {
     color: $text;
     text-decoration: none;
@@ -37,7 +38,112 @@
       color: $accent;
       font-weight: 600;
     }
+
+    &:hover {
+      color: $accent;
+    }
   }
+}
+
+.nav-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nav-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+
+  // A parent link is highlighted while one of its child pages is open.
+  &.has-active-child > a {
+    color: $accent;
+    font-weight: 600;
+  }
+}
+
+.nav-dropdown-toggle {
+  margin-left: 0.15rem;
+  padding: 0.15rem 0.3rem;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: $muted;
+  font: inherit;
+  line-height: 1;
+  cursor: pointer;
+
+  span {
+    display: inline-block;
+    transition: transform 0.15s;
+  }
+
+  &:hover,
+  &:focus-visible {
+    color: $text;
+    background: $hover-bg;
+  }
+}
+
+.nav-dropdown {
+  position: absolute;
+  top: 100%;
+  left: -0.75rem;
+  min-width: 200px;
+  margin: 0;
+  padding: 0.4rem 0;
+  list-style: none;
+  border: 1px solid $border;
+  border-radius: $radius;
+  background: $surface;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+
+  // Hidden until hovered, focused or opened with the toggle.
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(4px);
+  transition:
+    opacity 0.15s,
+    transform 0.15s,
+    visibility 0.15s;
+
+  a {
+    display: block;
+    padding: 0.5rem 1rem;
+    white-space: nowrap;
+
+    &:hover,
+    &:focus-visible {
+      background: $hover-bg;
+    }
+  }
+
+  // An invisible bridge so moving the pointer down to the menu doesn't close it.
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 100%;
+    height: 0.6rem;
+  }
+}
+
+.has-dropdown:hover > .nav-dropdown,
+.has-dropdown:focus-within > .nav-dropdown,
+.has-dropdown.is-open > .nav-dropdown {
+  visibility: visible;
+  opacity: 1;
+  transform: none;
+}
+
+.has-dropdown.is-open .nav-dropdown-toggle span {
+  transform: rotate(180deg);
 }
 
 .site-footer {

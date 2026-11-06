@@ -54,7 +54,14 @@ edit mode:
 
 The admin bar also links to the **Dashboard** (`/admin`), where site-wide settings live:
 
-- **Pages:** every page, including the built-in Home and Menu. Drag to set the navigation order.
+- **Pages:** every page, including the built-in Home and Menu. Drag a page by its handle to
+  reorder: nothing moves while dragging; a line shows where it will land, and the list updates when
+  you let go. To make it a **child page** (shown in a dropdown under its parent in the site
+  navigation), drop it on the **Nest under…** box that appears on eligible pages while dragging;
+  dropping anywhere else only reorders. Child pages can be reordered among themselves or dragged back
+  to the top level. Nesting is one level deep, Home can't be nested, and URLs stay flat
+  (`/team`, not `/about/team`). Keyboard: focus a handle and use the arrow keys to move a page among
+  its siblings; **Parent page** in page settings sets nesting without dragging.
   **New page** asks for a title (the URL is generated from it), a template, and whether to show it in
   the navigation; pages start as drafts. Each page has **Edit content** (opens it in edit mode),
   **settings** (title, URL, navigation label, show in navigation, published/draft, SEO title and
@@ -105,6 +112,13 @@ and add it to the `NAV` list in `AdminLayout.jsx`.
 
 - **Menu data:** `menu_sections` and `menu_items` (items belong to a section; deleting a
   section deletes its items). Each has a `position` column used for ordering.
+- **Child pages:** `pages.parent_id` (one level deep; `nav_order` is the position among
+  siblings). A database trigger enforces the rules (Home never nested, parents must be top-level, a
+  page with children can't be nested), and `arrange_pages(items)` saves a whole drag-and-drop
+  arrangement at once. Deleting a parent moves its children to the top level. The header dropdowns
+  are `src/components/SiteNav.jsx`; the dashboard tree and its drag-and-drop are
+  `src/admin/dashboard/PageTree.jsx`; tree helpers (`pageTree`, `navTree`, `canNest`,
+  `arrangeAfterMove`) are in `src/lib/pages.js`.
 - **Pages:** the `pages` table holds every page; the header navigation is built from it (published,
   "show in navigation", ordered by `nav_order`). Row Level Security only returns drafts to signed-in
   users, and a trigger stops built-in pages from being deleted, unpublished or moved. Content for a
@@ -202,6 +216,7 @@ src/
   App.jsx                      routes (admin routes lazy-loaded)
   components/                  public site components (custom SCSS)
     Layout.jsx                 header, nav, footer; lazy-loads the admin bar when logged in
+    SiteNav.jsx                header navigation with dropdowns for child pages
     EditableText.jsx           text that becomes editable in edit mode
     EditableImage.jsx          image; lazy-loads its edit controls in edit mode
     PageSections.jsx           renders a page's sections; lazy-loads section editing in edit mode
@@ -229,7 +244,7 @@ src/
     variables/                 Variables dashboard page, variable dialog, insert-variable picker
     richtext/                  formatted-text editor (Tiptap): RichTextField + toolbar, VariableNode
     dashboard/                 AdminDashboard (routes + auth guard), AdminLayout, SiteSettings,
-                               PagesManager, PageSettingsDialog,
+                               PagesManager, PageTree (drag & drop + nesting), PageSettingsDialog,
                                AssetsManager, MediaDetails, OptimizePanel
   lib/
     supabase.js                Supabase client

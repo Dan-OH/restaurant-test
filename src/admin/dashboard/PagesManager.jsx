@@ -18,7 +18,7 @@ import { navLabel, pagePath } from '../../lib/pages'
 import { usePageMeta } from '../../lib/seo'
 import { useSite } from '../../lib/site'
 import { useConfirm } from '../confirm'
-import { DragHandle, SortableList } from '../SortableList.jsx'
+import PageTree from './PageTree.jsx'
 import PageSettingsDialog from './PageSettingsDialog.jsx'
 
 export default function PagesManager() {
@@ -43,15 +43,16 @@ export default function PagesManager() {
     navigate(pagePath(page))
   }
 
-  function reorder(next) {
+  function arrange(items) {
     setError(null)
-    site.reorderPages(next).catch((e) => setError(`Couldn't save the new order: ${e.message}`))
+    site.arrangePages(items).catch((e) => setError(`Couldn't save the new arrangement: ${e.message}`))
   }
 
   async function remove(page) {
+    const children = pages.filter((p) => p.parent_id === page.id)
     const ok = await confirm({
       title: 'Delete page?',
-      message: `"${page.title}" (${pagePath(page)}) and all of its text will be permanently deleted, and it will be removed from the navigation. Images it used stay in Assets.`,
+      message: `"${page.title}" (${pagePath(page)}) and all of its text will be permanently deleted, and it will be removed from the navigation. Images it used stay in Assets.${children.length ? ` Its ${children.length} child page${children.length === 1 ? '' : 's'} will move to the top level.` : ''}`,
       confirmText: page.title,
       confirmLabel: 'Delete page',
       danger: true,
@@ -76,7 +77,8 @@ export default function PagesManager() {
         </Button>
       </Stack>
       <Typography sx={{ color: 'text.secondary' }}>
-        Drag pages to set the order they appear in the site navigation.
+        Drag pages to set the order they appear in the site navigation. To make a page a child page (shown
+        in a dropdown under another page), drop it on the “Nest under…” box that appears while dragging.
       </Typography>
 
       {error && (
@@ -86,13 +88,16 @@ export default function PagesManager() {
       )}
 
       <Box sx={{ mt: 3 }}>
-        <SortableList
-          items={pages}
-          gap={12}
-          onReorder={reorder}
-          renderItem={(page) => (
+        <PageTree
+          pages={pages}
+          onArrange={arrange}
+          renderRow={(page, { handle, nestZone, dimmed }) => (
             <PageRow
               page={page}
+              handle={handle}
+              nestZone={nestZone}
+              dimmed={dimmed}
+              childCount={pages.filter((p) => p.parent_id === page.id).length}
               sectionCount={site.sectionsFor(page.id).length}
               onSettings={() => openSettings(page.id)}
               onEditContent={() => editContent(page)}
@@ -117,14 +122,14 @@ export default function PagesManager() {
   )
 }
 
-function PageRow({ page, sectionCount, onSettings, onEditContent, onDelete }) {
+function PageRow({ page, handle, nestZone, dimmed, childCount, sectionCount, onSettings, onEditContent, onDelete }) {
   const path = pagePath(page)
   const label = navLabel(page)
 
   return (
-    <Card variant="outlined">
+    <Card variant="outlined" sx={{ opacity: dimmed ? 0.45 : 1, transition: 'opacity 0.15s' }}>
       <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', p: 1.5, pr: 2 }}>
-        <DragHandle label={`Reorder ${page.title}`} />
+        {handle}
 
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Stack direction="row" spacing={1} useFlexGap sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
@@ -132,6 +137,9 @@ function PageRow({ page, sectionCount, onSettings, onEditContent, onDelete }) {
               {page.title}
             </Typography>
             {page.system_key && <Chip size="small" label="Built-in" />}
+            {childCount > 0 && (
+              <Chip size="small" variant="outlined" color="primary" label={`${childCount} child page${childCount === 1 ? '' : 's'}`} />
+            )}
             {!page.published && <Chip size="small" color="warning" label="Draft" />}
             {!page.show_in_nav && <Chip size="small" variant="outlined" label="Hidden from navigation" />}
             {page.show_in_nav && label !== page.title && (
@@ -147,7 +155,13 @@ function PageRow({ page, sectionCount, onSettings, onEditContent, onDelete }) {
           </Typography>
         </Box>
 
-        <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', flexShrink: 0 }}>
+        {/* While dragging, eligible pages show their nest drop zone in place of the actions. */}
+        {nestZone}
+        <Stack
+          direction="row"
+          spacing={0.5}
+          sx={{ alignItems: 'center', flexShrink: 0, display: nestZone ? 'none' : 'flex' }}
+        >
           <Button
             size="small"
             variant="outlined"

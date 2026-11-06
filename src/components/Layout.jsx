@@ -1,9 +1,9 @@
 import { Suspense } from 'react'
-import { Link, NavLink, Outlet } from 'react-router-dom'
+import { Link, Outlet } from 'react-router-dom'
 import { useAuth } from '../lib/useAuth'
 import { useSite } from '../lib/site'
-import { navLabel, navPages, pagePath } from '../lib/pages'
 import EditableText from './EditableText.jsx'
+import SiteNav from './SiteNav.jsx'
 import { lazyWithReload } from '../lib/lazyWithReload'
 
 // Only logged-in users see the admin bar, so only they download it (and MUI).
@@ -13,7 +13,7 @@ const YEAR = new Date().getFullYear()
 
 export default function Layout() {
   const { session } = useAuth()
-  const { editing, pages } = useSite()
+  const { editing } = useSite()
 
   return (
     <>
@@ -27,13 +27,7 @@ export default function Layout() {
           <Link to="/" className="brand" onClick={(e) => editing && e.preventDefault()}>
             <EditableText id="site.name">{'{{restaurant_name}}'}</EditableText>
           </Link>
-          <nav>
-            {navPages(pages).map((page) => (
-              <NavLink key={page.id} to={pagePath(page)} end={page.system_key === 'home'}>
-                {navLabel(page)}
-              </NavLink>
-            ))}
-          </nav>
+          <SiteNav />
         </div>
       </header>
       <main>

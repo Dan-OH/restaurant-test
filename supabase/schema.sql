@@ -454,3 +454,65 @@ begin
   end loop;
 end
 $$;
+
+-- ---------------------------------------------------------------------------
+-- Child pages: a page can sit under another page (shown as a dropdown in the nav).
+-- One level deep; nav_order is the position among siblings. Deleting a parent moves
+-- its children back to the top level. URLs stay flat (/team, not /about/team).
+-- ---------------------------------------------------------------------------
+alter table public.pages
+  add column if not exists parent_id uuid references public.pages(id) on delete set null;
+
+alter table public.pages drop constraint if exists pages_not_own_parent;
+alter table public.pages add constraint pages_not_own_parent check (parent_id is null or parent_id <> id);
+
+-- Keep nesting valid however pages are saved: Home is never nested, a page can only go under
+-- a top-level page, and a page that has children can't be nested.
+create or replace function public.validate_page_parent()
+returns trigger
+language plpgsql
+as $$
+begin
+  if new.parent_id is null then
+    return new;
+  end if;
+  if new.system_key = 'home' then
+    raise exception 'The home page can''t be nested under another page.';
+  end if;
+  if exists (select 1 from public.pages where id = new.parent_id and parent_id is not null) then
+    raise exception 'Pages can only be nested one level deep.';
+  end if;
+  if exists (select 1 from public.pages where parent_id = new.id) then
+    raise exception 'A page that has child pages can''t be nested itself.';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists validate_page_parent on public.pages;
+create trigger validate_page_parent
+  before insert or update of parent_id on public.pages
+  for each row execute function public.validate_page_parent();
+
+-- Saves a whole arrangement at once: items = [{ "id", "parent_id", "position" }, ...].
+-- Un-nesting happens before nesting so moves between levels validate cleanly.
+create or replace function public.arrange_pages(items jsonb)
+returns void
+language plpgsql
+security invoker
+as $$
+begin
+  update public.pages p
+     set parent_id = null, nav_order = (i->>'position')::int
+    from jsonb_array_elements(items) i
+   where p.id = (i->>'id')::uuid and i->>'parent_id' is null;
+
+  update public.pages p
+     set parent_id = (i->>'parent_id')::uuid, nav_order = (i->>'position')::int
+    from jsonb_array_elements(items) i
+   where p.id = (i->>'id')::uuid and i->>'parent_id' is not null;
+end;
+$$;
+
+revoke execute on function public.arrange_pages(jsonb) from anon, public;
+grant  execute on function public.arrange_pages(jsonb) to authenticated;

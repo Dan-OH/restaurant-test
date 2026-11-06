@@ -33,9 +33,68 @@ export function navLabel(page) {
   return page.nav_label?.trim() || page.title
 }
 
-/** Published pages shown in the header navigation, in order. */
-export function navPages(pages) {
-  return pages.filter((p) => p.show_in_nav && p.published).sort((a, b) => a.nav_order - b.nav_order)
+const byOrder = (a, b) => a.nav_order - b.nav_order
+
+/**
+ * All pages as a tree for the dashboard: [{ page, children: [page…] }], in order.
+ * Pages whose parent is missing are shown at the top level.
+ */
+export function pageTree(pages) {
+  const ids = new Set(pages.map((p) => p.id))
+  const isTop = (p) => !p.parent_id || !ids.has(p.parent_id)
+  return pages
+    .filter(isTop)
+    .sort(byOrder)
+    .map((page) => ({ page, children: pages.filter((c) => c.parent_id === page.id).sort(byOrder) }))
+}
+
+/**
+ * The header navigation: published pages with "show in navigation", as
+ * [{ page, children: [page…] }]. Children of a page that isn't in the nav take its place.
+ */
+export function navTree(pages) {
+  const visible = (p) => p.show_in_nav && p.published
+  return pageTree(pages).flatMap(({ page, children }) => {
+    const shown = children.filter(visible)
+    // A hidden parent's visible children take its place in the menu.
+    if (!visible(page)) return shown.map((child) => ({ page: child, children: [] }))
+    return [{ page, children: shown }]
+  })
+}
+
+/** Whether `page` may be nested under `parent` (one level deep; Home is never nested). */
+export function canNest(page, parent, pages) {
+  if (!parent || page.id === parent.id) return false
+  if (page.system_key === 'home') return false
+  if (parent.parent_id) return false // parents must be top-level
+  if (pages.some((p) => p.parent_id === page.id)) return false // has its own children
+  return true
+}
+
+/**
+ * New arrangement after moving `pageId` to be a child of `parentId` (null = top level) at
+ * `index` among its new siblings (counted without the moved page). Returns every page as
+ * { id, parent_id, position } for arrangePages.
+ */
+export function arrangeAfterMove(pages, pageId, parentId, index) {
+  const moved = pages.find((p) => p.id === pageId)
+  const siblingsOf = (pid) =>
+    pages.filter((p) => p.id !== pageId && (p.parent_id ?? null) === pid).sort(byOrder)
+
+  const lists = new Map()
+  for (const p of pages) {
+    const pid = p.parent_id ?? null
+    if (!lists.has(pid)) lists.set(pid, siblingsOf(pid))
+  }
+  const target = lists.get(parentId) ?? siblingsOf(parentId)
+  target.splice(Math.max(0, Math.min(index, target.length)), 0, moved)
+  lists.set(parentId, target)
+
+  const items = []
+  for (const [pid, list] of lists) {
+    list.forEach((p, position) => items.push({ id: p.id, parent_id: pid, position }))
+  }
+  return items
 }
 
 export function findPageByPath(pages, pathname) {

@@ -173,7 +173,10 @@ export function SiteProvider({ children }) {
       await track(() => api.deletePage(page, prefix))
       // The database also deletes the page's sections and their content.
       const sectionPrefixes = (pageSections ?? []).filter((s) => s.page_id === page.id).map((s) => `section-${s.id}.`)
-      setPages((list) => list.filter((p) => p.id !== page.id))
+      // Its child pages move to the top level (the database does the same).
+      setPages((list) =>
+        list.filter((p) => p.id !== page.id).map((p) => (p.parent_id === page.id ? { ...p, parent_id: null } : p)),
+      )
       setPageSections((list) => list.filter((s) => s.page_id !== page.id))
       setContent((c) =>
         Object.fromEntries(
@@ -184,12 +187,16 @@ export function SiteProvider({ children }) {
     [track, pageSections],
   )
 
-  // Optimistically reorder; on failure, reload the real order and rethrow.
-  const reorderPages = useCallback(
-    async (next) => {
-      setPages(next.map((p, i) => ({ ...p, nav_order: i })))
+  // Saves nesting and order ([{ id, parent_id, position }], see arrangeAfterMove in pages.js).
+  // Optimistic; on failure, reload the real arrangement and rethrow.
+  const arrangePages = useCallback(
+    async (items) => {
+      const byId = new Map(items.map((i) => [i.id, i]))
+      setPages((list) =>
+        list.map((p) => (byId.has(p.id) ? { ...p, parent_id: byId.get(p.id).parent_id, nav_order: byId.get(p.id).position } : p)),
+      )
       try {
-        await track(() => api.reorderPages(next.map((p) => p.id)))
+        await track(() => api.arrangePages(items))
       } catch (e) {
         api.fetchPages().then(setPages).catch(() => {})
         throw e
@@ -323,7 +330,7 @@ export function SiteProvider({ children }) {
       addPage,
       updatePage,
       removePage,
-      reorderPages,
+      arrangePages,
       pageSections,
       sectionsFor,
       addPageSection,
@@ -354,7 +361,7 @@ export function SiteProvider({ children }) {
       addPage,
       updatePage,
       removePage,
-      reorderPages,
+      arrangePages,
       pageSections,
       sectionsFor,
       addPageSection,

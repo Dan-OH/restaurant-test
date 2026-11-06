@@ -15,7 +15,7 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
-import { TEMPLATES, slugify, validateSlug } from '../../lib/pages'
+import { TEMPLATES, canNest, pageTree, slugify, validateSlug } from '../../lib/pages'
 import { SEO_LIMITS, formatPageTitle, useSeoSettings } from '../../lib/seo'
 import { useSite } from '../../lib/site'
 import FieldHint from '../FieldHint.jsx'
@@ -38,6 +38,15 @@ export default function PageSettingsDialog({ page, onClose, onSaved }) {
   const [template, setTemplate] = useState(page?.template ?? 'basic')
   const [navLabel, setNavLabel] = useState(page?.nav_label ?? '')
   const [showInNav, setShowInNav] = useState(page?.show_in_nav ?? true)
+  const [parentId, setParentId] = useState(page?.parent_id ?? '')
+
+  // Pages this page can be nested under (top-level pages; see canNest).
+  const asChild = page ?? { id: '__new', system_key: null }
+  const parentOptions = pageTree(site.pages)
+    .map((n) => n.page)
+    .filter((p) => canNest(asChild, p, site.pages))
+  const hasChildren = Boolean(page) && site.pages.some((p) => p.parent_id === page.id)
+  const canHaveParent = asChild.system_key !== 'home' && !hasChildren
   const [published, setPublished] = useState(page?.published ?? false)
   const [seoTitle, setSeoTitle] = useState(page?.seo_title ?? '')
   const [seoDescription, setSeoDescription] = useState(page?.seo_description ?? '')
@@ -65,12 +74,19 @@ export default function PageSettingsDialog({ page, onClose, onSaved }) {
       show_in_nav: showInNav,
       seo_title: seoTitle.trim() || null,
       seo_description: seoDescription.trim() || null,
+      parent_id: parentId || null,
     }
+    // A new page, or one moved to a different parent, goes at the end of its new siblings.
+    const siblingsEnd = () =>
+      Math.max(
+        -1,
+        ...site.pages.filter((p) => p.id !== page?.id && (p.parent_id ?? null) === fields.parent_id).map((p) => p.nav_order),
+      ) + 1
+    if (!isNew && (page.parent_id ?? null) !== fields.parent_id) fields.nav_order = siblingsEnd()
     try {
       let saved
       if (isNew) {
-        const nextOrder = Math.max(-1, ...site.pages.map((p) => p.nav_order)) + 1
-        saved = await site.addPage({ ...fields, slug, template, published, nav_order: nextOrder })
+        saved = await site.addPage({ ...fields, slug, template, published, nav_order: siblingsEnd() })
       } else {
         saved = await site.updatePage(page.id, isSystem ? fields : { ...fields, slug, published })
       }
@@ -157,6 +173,31 @@ export default function PageSettingsDialog({ page, onClose, onSaved }) {
 
             <Divider />
             <Typography variant="subtitle2">Navigation &amp; visibility</Typography>
+
+            <TextField
+              select
+              label="Parent page"
+              value={canHaveParent ? parentId : ''}
+              onChange={(e) => setParentId(e.target.value)}
+              disabled={!canHaveParent}
+              fullWidth
+              helperText={
+                !canHaveParent
+                  ? asChild.system_key === 'home'
+                    ? 'The home page is always at the top level.'
+                    : 'This page has child pages, so it stays at the top level.'
+                  : 'Child pages appear in a dropdown under their parent in the navigation. Their address stays the same.'
+              }
+            >
+              <MenuItem value="">
+                <em>None (top level)</em>
+              </MenuItem>
+              {parentOptions.map((p) => (
+                <MenuItem key={p.id} value={p.id}>
+                  {p.title}
+                </MenuItem>
+              ))}
+            </TextField>
 
             <FormControlLabel
               control={<Switch checked={showInNav} onChange={(e) => setShowInNav(e.target.checked)} />}
