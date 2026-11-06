@@ -190,3 +190,92 @@ begin
   end loop;
 end
 $$;
+
+-- ---------------------------------------------------------------------------
+-- Pages. Home and Menu are built-in "system" pages (system_key set): they can be
+-- renamed, hidden from navigation and given SEO text, but not deleted, unpublished
+-- or moved. Other pages are created from the dashboard and served at /<slug>.
+-- Page content lives in site_content under "<system_key>." or "page-<id>." keys.
+-- ---------------------------------------------------------------------------
+create table if not exists public.pages (
+  id              uuid primary key default gen_random_uuid(),
+  system_key      text unique,
+  slug            text not null unique,
+  title           text not null,
+  nav_label       text,
+  show_in_nav     boolean not null default true,
+  nav_order       integer not null default 0,
+  published       boolean not null default false,
+  template        text not null default 'basic',
+  seo_title       text,
+  seo_description text,
+  created_at      timestamptz not null default now(),
+  updated_at      timestamptz not null default now(),
+  constraint pages_slug_format check (
+    slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$' or (system_key = 'home' and slug = '')
+  )
+);
+
+alter table public.pages enable row level security;
+
+-- Visitors only see published pages; signed-in users also see drafts.
+drop policy if exists "Public read published pages" on public.pages;
+create policy "Public read published pages" on public.pages
+  for select to anon using (published);
+
+drop policy if exists "Authenticated read pages" on public.pages;
+create policy "Authenticated read pages" on public.pages
+  for select to authenticated using (true);
+
+drop policy if exists "Authenticated insert pages" on public.pages;
+create policy "Authenticated insert pages" on public.pages
+  for insert to authenticated with check (system_key is null);
+
+drop policy if exists "Authenticated update pages" on public.pages;
+create policy "Authenticated update pages" on public.pages
+  for update to authenticated using (true) with check (true);
+
+drop policy if exists "Authenticated delete pages" on public.pages;
+create policy "Authenticated delete pages" on public.pages
+  for delete to authenticated using (system_key is null);
+
+-- System pages keep their address, key, template and published state no matter what's sent.
+create or replace function public.protect_system_pages()
+returns trigger
+language plpgsql
+as $$
+begin
+  if old.system_key is not null then
+    new.system_key := old.system_key;
+    new.slug := old.slug;
+    new.template := old.template;
+    new.published := true;
+  end if;
+  new.updated_at := now();
+  return new;
+end;
+$$;
+
+drop trigger if exists protect_system_pages on public.pages;
+create trigger protect_system_pages
+  before update on public.pages
+  for each row execute function public.protect_system_pages();
+
+insert into public.pages (system_key, slug, title, show_in_nav, nav_order, published, template)
+values ('home', '', 'Home', true, 0, true, 'system'),
+       ('menu', 'menu', 'Menu', true, 1, true, 'system')
+on conflict (system_key) do nothing;
+
+create or replace function public.reorder_pages(ids uuid[])
+returns void
+language sql
+security invoker
+as $$
+  update public.pages p
+     set nav_order = o.ord - 1
+    from unnest(ids) with ordinality as o(id, ord)
+   where p.id = o.id;
+$$;
+
+revoke execute on function public.reorder_pages(uuid[]) from anon, public;
+grant  execute on function public.reorder_pages(uuid[]) to authenticated;

@@ -16,7 +16,8 @@ export default function EditableText({ id, as: Tag = 'span', multiline = false, 
   const value = getText(id, fallback)
   const classes = [className, multiline && 'multiline'].filter(Boolean).join(' ') || undefined
 
-  if (!editing) return <Tag className={classes}>{value}</Tag>
+  // Empty fields render nothing for visitors; in edit mode they show a placeholder.
+  if (!editing) return value ? <Tag className={classes}>{value}</Tag> : null
 
   return (
     <EditingField

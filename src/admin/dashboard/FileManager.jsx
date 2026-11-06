@@ -92,7 +92,7 @@ function groupItems(items, grouping) {
 
 export default function FileManager() {
   usePageMeta('Files')
-  const { media, content } = useSite()
+  const { media, content, pages } = useSite()
   const [filter, setFilter] = useState('all')
   const [search, setSearch] = useState('')
   const [sort, setSort] = usePersistentState('files.sort', 'newest', Object.keys(SORTS))
@@ -102,8 +102,8 @@ export default function FileManager() {
   const openId = params.get('image')
 
   const items = useMemo(
-    () => Object.values(media).map((m) => ({ ...m, usages: findUsages(content, m.id) })),
-    [media, content],
+    () => Object.values(media).map((m) => ({ ...m, usages: findUsages(content, m.id, pages) })),
+    [media, content, pages],
   )
 
   const query = search.trim().toLowerCase()

@@ -65,3 +65,12 @@
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 2rem;
 }
+
+// Shorter hero used at the top of pages created in the dashboard.
+.hero--compact {
+  padding: 4rem 0;
+
+  &:has(.hero-image) {
+    min-height: min(45vh, 420px);
+  }
+}

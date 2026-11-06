@@ -2,14 +2,15 @@ import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 import { fetchMenu, formatPrice } from '../lib/api'
 import { useSite } from '../lib/site'
 import { usePageMeta } from '../lib/seo'
+import { systemPage } from '../lib/pages'
 import EditableText from '../components/EditableText.jsx'
 
 // Admin-only (MUI); loaded the first time edit mode is turned on.
 const MenuEditor = lazy(() => import('../admin/menu/MenuEditor.jsx'))
 
 export default function Menu() {
-  const { editing, getText } = useSite()
-  usePageMeta(getText('menu.title', 'Menu'))
+  const { editing, getText, pages } = useSite()
+  usePageMeta(getText('menu.title', 'Menu'), systemPage(pages, 'menu'))
   const [sections, setSections] = useState(null)
   const [error, setError] = useState(null)
 

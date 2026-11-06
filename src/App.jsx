@@ -1,8 +1,10 @@
 import { lazy, Suspense } from 'react'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Route, Routes } from 'react-router-dom'
 import Layout from './components/Layout.jsx'
 import Home from './pages/Home.jsx'
 import Menu from './pages/Menu.jsx'
+import DynamicPage from './pages/DynamicPage.jsx'
+import NotFound from './pages/NotFound.jsx'
 import { isConfigured } from './lib/supabase'
 import { SiteProvider } from './lib/SiteProvider.jsx'
 
@@ -32,11 +34,12 @@ export default function App() {
             <Route index element={<Home />} />
             <Route path="menu" element={<Menu />} />
             <Route path="login" element={<Login />} />
+            {/* Pages created in the dashboard */}
+            <Route path=":slug" element={<DynamicPage />} />
+            <Route path="*" element={<NotFound />} />
           </Route>
 
           <Route path="admin/*" element={<AdminDashboard />} />
-
-          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>
     </SiteProvider>

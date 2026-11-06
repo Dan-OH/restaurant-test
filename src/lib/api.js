@@ -153,3 +153,27 @@ export async function updateMedia(id, patch) {
 export async function deleteMedia(id) {
   check(await supabase.from('media').delete().eq('id', id))
 }
+
+// ---- Pages ----
+
+export async function fetchPages() {
+  return check(await supabase.from('pages').select('*').order('nav_order'))
+}
+
+export async function createPage(row) {
+  return check(await supabase.from('pages').insert(row).select().single())
+}
+
+export async function updatePage(id, patch) {
+  return check(await supabase.from('pages').update(patch).eq('id', id).select().single())
+}
+
+/** Deletes a page and all of its text/image placements (images stay in the library). */
+export async function deletePage(page, contentPrefix) {
+  check(await supabase.from('site_content').delete().like('key', `${contentPrefix}.%`))
+  check(await supabase.from('pages').delete().eq('id', page.id))
+}
+
+export async function reorderPages(ids) {
+  check(await supabase.rpc('reorder_pages', { ids }))
+}

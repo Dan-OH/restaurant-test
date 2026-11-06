@@ -4,18 +4,18 @@
  * Image placements are site_content keys named "<page>.<feature>.<name...>":
  *   home.hero.image        → page "Home", feature "Hero images"
  *   home.slideshow.main    → page "Home", feature "Slideshows"
+ *   page-<id>.hero.image   → a page created in the dashboard (looked up in the pages table)
  *
  * A placement's value is either one media id, or a JSON array of media ids for features
  * that hold several images (slideshows, galleries). Both are detected automatically.
  *
- * To add a page or feature, add it to PAGES / FEATURES below so it gets a proper name and
- * position in the file manager. Unknown ones still work, with names derived from the key.
+ * Page names come from the pages table (pass `pages` to findUsages). To add a feature, add it to
+ * FEATURES below so it gets a proper name and position. Unknown ones still work, with names
+ * derived from the key.
  */
 
-const PAGES = {
-  home: { name: 'Home', path: '/', order: 1 },
-  menu: { name: 'Menu', path: '/menu', order: 2 },
-}
+import { pagePath } from './pages'
+
 const SITEWIDE_PAGE = { name: 'All pages', path: '/', order: 50 }
 // Key prefixes for parts of the layout that appear on every page.
 const SITEWIDE = new Set(['site', 'header', 'footer'])
@@ -47,9 +47,19 @@ export function removeFromPlacement(value, mediaId) {
   return value === mediaId ? '' : value
 }
 
-export function describePlacement(key, index = 0, total = 1) {
+function pageForPrefix(prefix, pages) {
+  if (SITEWIDE.has(prefix)) return SITEWIDE_PAGE
+  const page = prefix.startsWith('page-')
+    ? pages.find((p) => p.id === prefix.slice(5))
+    : pages.find((p) => p.system_key === prefix)
+  if (page) return { name: page.title, path: pagePath(page), order: page.nav_order }
+  if (prefix.startsWith('page-')) return { name: 'Deleted page', path: '/', order: 45 }
+  return { name: capitalize(prefix), path: '/', order: 40 }
+}
+
+export function describePlacement(key, index = 0, total = 1, pages = []) {
   const [prefix, featureKey = 'image', ...rest] = key.split('.')
-  const page = PAGES[prefix] ?? (SITEWIDE.has(prefix) ? SITEWIDE_PAGE : { name: capitalize(prefix), path: '/', order: 40 })
+  const page = pageForPrefix(prefix, pages)
   const feature = FEATURES[featureKey] ?? {
     name: `${capitalize(featureKey)} images`,
     item: `${capitalize(featureKey)} image`,
@@ -71,13 +81,13 @@ export function describePlacement(key, index = 0, total = 1) {
   }
 }
 
-/** All placements that reference the given media id. */
-export function findUsages(content, mediaId) {
+/** All placements that reference the given media id. `pages` supplies page names. */
+export function findUsages(content, mediaId, pages = []) {
   const usages = []
   for (const [key, value] of Object.entries(content)) {
     const ids = placementIds(value)
     const index = ids.indexOf(mediaId)
-    if (index !== -1) usages.push(describePlacement(key, index, ids.length))
+    if (index !== -1) usages.push(describePlacement(key, index, ids.length, pages))
   }
   return usages
 }

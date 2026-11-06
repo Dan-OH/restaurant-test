@@ -2,12 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { SiteContext } from './site'
 import { useAuth } from './useAuth'
 import * as api from './api'
+import { contentPrefix, FALLBACK_PAGES } from './pages'
 
 export function SiteProvider({ children }) {
   const { session } = useAuth()
   const [editingFlag, setEditing] = useState(false)
   const [content, setContent] = useState(null)
   const [media, setMedia] = useState(null) // { [id]: row }
+  const [pages, setPages] = useState(null) // array, ordered by nav_order
   const [status, setStatus] = useState('idle')
   const [statusError, setStatusError] = useState(null)
   const pending = useRef(0)
@@ -31,6 +33,18 @@ export function SiteProvider({ children }) {
         setMedia({})
       })
   }, [])
+
+  // Refetch pages when the user logs in or out: drafts are only visible to logged-in users.
+  const userId = session?.user?.id
+  useEffect(() => {
+    api
+      .fetchPages()
+      .then(setPages)
+      .catch((e) => {
+        console.error('Could not load pages, using defaults:', e.message)
+        setPages(FALLBACK_PAGES)
+      })
+  }, [userId])
 
   const track = useCallback(async (fn) => {
     pending.current += 1
@@ -115,6 +129,50 @@ export function SiteProvider({ children }) {
     [track],
   )
 
+  // ---- Pages ----
+
+  const addPage = useCallback(
+    async (row) => {
+      const created = await track(() => api.createPage(row))
+      setPages((list) => [...list, created])
+      return created
+    },
+    [track],
+  )
+
+  const updatePage = useCallback(
+    async (id, patch) => {
+      const updated = await track(() => api.updatePage(id, patch))
+      setPages((list) => list.map((p) => (p.id === id ? updated : p)))
+      return updated
+    },
+    [track],
+  )
+
+  const removePage = useCallback(
+    async (page) => {
+      const prefix = contentPrefix(page)
+      await track(() => api.deletePage(page, prefix))
+      setPages((list) => list.filter((p) => p.id !== page.id))
+      setContent((c) => Object.fromEntries(Object.entries(c).filter(([k]) => !k.startsWith(`${prefix}.`))))
+    },
+    [track],
+  )
+
+  // Optimistically reorder; on failure, reload the real order and rethrow.
+  const reorderPages = useCallback(
+    async (next) => {
+      setPages(next.map((p, i) => ({ ...p, nav_order: i })))
+      try {
+        await track(() => api.reorderPages(next.map((p) => p.id)))
+      } catch (e) {
+        api.fetchPages().then(setPages).catch(() => {})
+        throw e
+      }
+    },
+    [track],
+  )
+
   const value = useMemo(
     () => ({
       editing,
@@ -128,6 +186,11 @@ export function SiteProvider({ children }) {
       addMedia,
       updateMedia,
       removeMedia,
+      pages,
+      addPage,
+      updatePage,
+      removePage,
+      reorderPages,
       track,
       status,
       statusError,
@@ -143,6 +206,11 @@ export function SiteProvider({ children }) {
       addMedia,
       updateMedia,
       removeMedia,
+      pages,
+      addPage,
+      updatePage,
+      removePage,
+      reorderPages,
       track,
       status,
       statusError,
@@ -150,7 +218,7 @@ export function SiteProvider({ children }) {
   )
 
   // Wait for saved content before rendering so visitors never see defaults flash first.
-  if (content === null || media === null) return null
+  if (content === null || media === null || pages === null) return null
 
   return <SiteContext.Provider value={value}>{children}</SiteContext.Provider>
 }

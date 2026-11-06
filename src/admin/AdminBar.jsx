@@ -1,7 +1,8 @@
-import { Link as RouterLink } from 'react-router-dom'
+import { Link as RouterLink, useLocation } from 'react-router-dom'
 import AppBar from '@mui/material/AppBar'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import Chip from '@mui/material/Chip'
 import CircularProgress from '@mui/material/CircularProgress'
 import Stack from '@mui/material/Stack'
 import Toolbar from '@mui/material/Toolbar'
@@ -13,17 +14,21 @@ import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined'
 import EditIcon from '@mui/icons-material/Edit'
 import ErrorOutlinedIcon from '@mui/icons-material/ErrorOutlined'
 import LogoutIcon from '@mui/icons-material/Logout'
+import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined'
 import { useAuth } from '../lib/useAuth'
 import { useSite } from '../lib/site'
 import { useSignOut } from '../lib/useSignOut'
+import { findPageByPath } from '../lib/pages'
 import AdminTheme from './AdminTheme.jsx'
 import { BAR_COLOR, BAR_EDITING_COLOR } from './theme'
 
 /** Sticky bar above the site for logged-in users: edit-mode toggle, dashboard link, save status. */
 export default function AdminBar() {
   const { session } = useAuth()
-  const { editing, setEditing } = useSite()
+  const { editing, setEditing, pages } = useSite()
   const signOut = useSignOut()
+  const { pathname } = useLocation()
+  const currentPage = findPageByPath(pages, pathname)
 
   if (!session) return null
 
@@ -57,8 +62,24 @@ export default function AdminBar() {
           >
             Dashboard
           </Button>
+          {currentPage && (
+            <Button
+              component={RouterLink}
+              to={`/admin/pages?edit=${currentPage.id}`}
+              color="inherit"
+              size="small"
+              startIcon={<SettingsOutlinedIcon />}
+            >
+              Page settings
+            </Button>
+          )}
+          {currentPage && !currentPage.published && (
+            <Tooltip title="Only logged-in staff can see this page. Publish it in Page settings.">
+              <Chip size="small" color="warning" label="Draft" />
+            </Tooltip>
+          )}
           {editing && (
-            <Typography variant="body2" sx={{ opacity: 0.8, display: { xs: 'none', md: 'block' } }}>
+            <Typography variant="body2" sx={{ opacity: 0.8, display: { xs: 'none', lg: 'block' } }}>
               Click any outlined text to change it.
             </Typography>
           )}

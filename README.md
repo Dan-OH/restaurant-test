@@ -1,10 +1,13 @@
 # Restaurant Website
 
-Vite + React (plain JS) site with a homepage and menu, editable in place by logged-in staff. Data lives in Supabase.
+Vite + React (plain JS) restaurant site, editable in place by logged-in staff, with a dashboard for
+pages, images and settings. Data lives in Supabase.
 
 - `/` – homepage
 - `/menu` – the menu
+- `/<slug>` – pages created in the dashboard (unknown addresses show a "Page not found" page)
 - `/login` – staff login (linked as "Staff login" in the footer)
+- `/admin` – dashboard
 
 ## Editing the site
 
@@ -24,6 +27,14 @@ edit mode:
 
 The admin bar also links to the **Dashboard** (`/admin`), where site-wide settings live:
 
+- **Pages:** every page, including the built-in Home and Menu. Drag to set the navigation order.
+  **New page** asks for a title (the URL is generated from it), a template, and whether to show it in
+  the navigation; pages start as drafts. Each page has **Edit content** (opens it in edit mode),
+  **settings** (title, URL, navigation label, show in navigation, published/draft, SEO title and
+  description) and **delete** (type the title to confirm; its images stay in Files). Built-in pages
+  can be renamed, hidden from navigation and given SEO text, but not deleted, unpublished or moved.
+  On the site, the admin bar shows **Page settings** for the current page and a **Draft** badge on
+  unpublished pages, which visitors can't see.
 - **Files:** every uploaded image, with where it's used (page chips; links to each page), size and
   format, and warnings for missing alt text. Search; sort by date, name, file size, dimensions or
   usage; group by page or by feature (hero images, slideshows…); filter by in use / not used / missing
@@ -63,6 +74,14 @@ and add it to the `NAV` list in `AdminLayout.jsx`.
 
 - **Menu data:** `menu_sections` and `menu_items` (items belong to a section; deleting a
   section deletes its items). Each has a `position` column used for ordering.
+- **Pages:** the `pages` table holds every page; the header navigation is built from it (published,
+  "show in navigation", ordered by `nav_order`). Row Level Security only returns drafts to signed-in
+  users, and a trigger stops built-in pages from being deleted, unpublished or moved. Content for a
+  page is stored in `site_content` under its prefix: `home.` / `menu.` for built-in pages and
+  `page-<id>.` for created pages (so renaming a URL never loses content). Created pages render through
+  a template (`template` column; currently `basic`: optional header image, heading, intro, body text),
+  in `src/pages/DynamicPage.jsx`. To add a template, add it to `TEMPLATES` in `src/lib/pages.js` and a
+  case in `PageTemplate`.
 - **Page text:** `site_content` stores text edits as key/value rows. In code, text is wrapped in
   `<EditableText id="home.hero.title" as="h1">Default text</EditableText>`. The children are the default,
   shown until someone saves an edit under that `id`. To make new text editable, wrap it the same way
@@ -117,7 +136,8 @@ src/
     Layout.jsx                 header, nav, footer; lazy-loads the admin bar when logged in
     EditableText.jsx           text that becomes editable in edit mode
     EditableImage.jsx          image; lazy-loads its edit controls in edit mode
-  pages/                       Home, Menu (lazy-loads the menu editor in edit mode)
+  pages/                       Home, Menu (lazy-loads the menu editor in edit mode),
+                               DynamicPage (created pages + templates), NotFound
   admin/                       all admin UI (MUI)
     theme.js, AdminTheme.jsx   MUI theme and provider (includes ConfirmProvider)
     confirm.js, ConfirmProvider.jsx  useConfirm(): MUI confirm/alert dialogs, type-to-confirm deletes
@@ -127,8 +147,11 @@ src/
     usePersistentState.js      remembers view preferences (e.g. Files sort) in localStorage
     ImageCropper.jsx           crop & resize dialog (react-easy-crop)
     Login.jsx                  staff login page
-    menu/                      MenuEditor, SortableList (drag & drop), SectionForm, ItemForm
+    SortableList.jsx           drag & drop lists (menu editor, pages)
+    FieldHint.jsx              helper text with a character counter
+    menu/                      MenuEditor, SectionForm, ItemForm
     dashboard/                 AdminDashboard (routes + auth guard), AdminLayout, SiteSettings,
+                               PagesManager, PageSettingsDialog,
                                FileManager, MediaDetails, OptimizePanel
   lib/
     supabase.js                Supabase client
@@ -137,6 +160,7 @@ src/
     AuthProvider.jsx           session state; useAuth.js for the hook
     SiteProvider.jsx           edit mode, page text, media library, save status; site.js for useSite()
     seo.js                     site title/description settings and usePageMeta()
+    pages.js                   page paths, navigation, slugs, templates
     media.js                   placement naming (page/feature), usage lookup, size/format formatting
     useSignOut.js              sign out + leave edit mode
   styles/                      public site SCSS; main.scss imports the partials

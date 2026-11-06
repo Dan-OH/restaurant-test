@@ -30,13 +30,17 @@ export function formatPageTitle(pageTitle, siteTitle) {
 /**
  * Sets the browser tab title and meta description for the current page.
  * Pass a page name (e.g. "Menu") to get "Menu · Site Title"; omit it for the homepage.
+ * Pass a `page` row to apply its SEO overrides (seo_title replaces the whole title,
+ * seo_description replaces the site-wide description).
  */
-export function usePageMeta(pageTitle) {
-  const { title, description } = useSeoSettings()
+export function usePageMeta(pageTitle, page) {
+  const site = useSeoSettings()
+  const fullTitle = page?.seo_title?.trim() || formatPageTitle(pageTitle, site.title)
+  const description = page?.seo_description?.trim() || site.description
 
   useEffect(() => {
-    document.title = formatPageTitle(pageTitle, title)
-  }, [pageTitle, title])
+    document.title = fullTitle
+  }, [fullTitle])
 
   useEffect(() => {
     let tag = document.querySelector('meta[name="description"]')

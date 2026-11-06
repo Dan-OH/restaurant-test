@@ -3,10 +3,11 @@ import EditableText from '../components/EditableText.jsx'
 import EditableImage from '../components/EditableImage.jsx'
 import { useSite } from '../lib/site'
 import { usePageMeta } from '../lib/seo'
+import { systemPage } from '../lib/pages'
 
 export default function Home() {
-  const { editing } = useSite()
-  usePageMeta()
+  const { editing, pages } = useSite()
+  usePageMeta(undefined, systemPage(pages, 'home'))
 
   return (
     <>

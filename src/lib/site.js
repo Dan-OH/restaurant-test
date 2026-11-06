@@ -9,6 +9,8 @@ import { createContext, useContext } from 'react'
  *  - saveTexts({ key: value, ... }): persist several keys in one request
  *  - media: the media library, { id: row }; getMedia(id) returns one row or null
  *  - addMedia(row) / updateMedia(id, patch) / removeMedia(id): media library changes
+ *  - pages: all pages (drafts only when logged in), ordered by nav_order
+ *  - addPage(row) / updatePage(id, patch) / removePage(page) / reorderPages(list)
  *  - track(fn): run an async save and reflect it in the admin bar's status
  *  - status: 'idle' | 'saving' | 'saved' | 'error', and statusError
  */

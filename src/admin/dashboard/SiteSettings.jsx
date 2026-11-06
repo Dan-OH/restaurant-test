@@ -9,6 +9,7 @@ import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { useSite } from '../../lib/site'
+import FieldHint from '../FieldHint.jsx'
 import { SEO_DEFAULTS, SEO_KEYS, SEO_LIMITS, usePageMeta, useSeoSettings } from '../../lib/seo'
 
 export default function SiteSettings() {
@@ -108,22 +109,6 @@ export default function SiteSettings() {
           </Stack>
         </CardContent>
       </Card>
-    </Box>
-  )
-}
-
-function FieldHint({ value, limit, children }) {
-  const length = value.trim().length
-  const over = length > limit
-  return (
-    <Box component="span" sx={{ display: 'flex', justifyContent: 'space-between', gap: 2 }}>
-      <span>{children}</span>
-      <Box
-        component="span"
-        sx={{ flexShrink: 0, color: over ? 'error.main' : 'inherit', fontWeight: over ? 600 : 'inherit' }}
-      >
-        {length}/{limit}
-      </Box>
     </Box>
   )
 }

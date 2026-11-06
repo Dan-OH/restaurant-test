@@ -37,3 +37,9 @@
 .hero .editable:focus {
   outline-color: #fff;
 }
+
+// Empty block-level fields (e.g. page body) get a full-width area to click into.
+div.editable:empty {
+  display: block;
+  min-height: 6em;
+}
