@@ -4,6 +4,7 @@ import { useAuth } from './useAuth'
 import * as api from './api'
 import { contentPrefix, FALLBACK_PAGES } from './pages'
 import { FALLBACK_VARIABLES } from './variables'
+import { arrangeWithoutGroup, navStructure } from './nav'
 
 export function SiteProvider({ children }) {
   const { session } = useAuth()
@@ -12,6 +13,7 @@ export function SiteProvider({ children }) {
   const [media, setMedia] = useState(null) // { [id]: row }
   const [pages, setPages] = useState(null) // array, ordered by nav_order
   const [pageSections, setPageSections] = useState(null) // array, all pages' sections
+  const [navGroups, setNavGroups] = useState(null) // array of navigation groups
   const [variableList, setVariableList] = useState(null) // array of site variables
   const [status, setStatus] = useState('idle')
   const [statusError, setStatusError] = useState(null)
@@ -54,6 +56,13 @@ export function SiteProvider({ children }) {
       .catch((e) => {
         console.error('Could not load pages, using defaults:', e.message)
         setPages(FALLBACK_PAGES)
+      })
+    api
+      .fetchNavGroups()
+      .then(setNavGroups)
+      .catch((e) => {
+        console.error('Could not load navigation groups:', e.message)
+        setNavGroups([])
       })
     api
       .fetchPageSections()
@@ -173,10 +182,7 @@ export function SiteProvider({ children }) {
       await track(() => api.deletePage(page, prefix))
       // The database also deletes the page's sections and their content.
       const sectionPrefixes = (pageSections ?? []).filter((s) => s.page_id === page.id).map((s) => `section-${s.id}.`)
-      // Its child pages move to the top level (the database does the same).
-      setPages((list) =>
-        list.filter((p) => p.id !== page.id).map((p) => (p.parent_id === page.id ? { ...p, parent_id: null } : p)),
-      )
+      setPages((list) => list.filter((p) => p.id !== page.id))
       setPageSections((list) => list.filter((s) => s.page_id !== page.id))
       setContent((c) =>
         Object.fromEntries(
@@ -187,22 +193,72 @@ export function SiteProvider({ children }) {
     [track, pageSections],
   )
 
-  // Saves nesting and order ([{ id, parent_id, position }], see arrangeAfterMove in pages.js).
-  // Optimistic; on failure, reload the real arrangement and rethrow.
-  const arrangePages = useCallback(
+  // ---- Navigation groups and arrangement ----
+
+  // Applies an arrangement ([{ type, id, parent, position }], see lib/nav.js) to local state.
+  const applyArrangement = useCallback((items) => {
+    const pagesById = new Map(items.filter((i) => i.type === 'page').map((i) => [i.id, i]))
+    const groupsById = new Map(items.filter((i) => i.type === 'group').map((i) => [i.id, i]))
+    setPages((list) =>
+      list.map((p) => {
+        const i = pagesById.get(p.id)
+        return i ? { ...p, group_id: i.parent, nav_order: i.position } : p
+      }),
+    )
+    setNavGroups((list) =>
+      list.map((g) => {
+        const i = groupsById.get(g.id)
+        return i ? { ...g, parent_id: i.parent, nav_order: i.position } : g
+      }),
+    )
+  }, [])
+
+  const reloadNav = useCallback(() => {
+    api.fetchPages().then(setPages).catch(() => {})
+    api.fetchNavGroups().then(setNavGroups).catch(() => {})
+  }, [])
+
+  // Saves where every page and group sits. Optimistic; on failure reloads and rethrows.
+  const arrangeNav = useCallback(
     async (items) => {
-      const byId = new Map(items.map((i) => [i.id, i]))
-      setPages((list) =>
-        list.map((p) => (byId.has(p.id) ? { ...p, parent_id: byId.get(p.id).parent_id, nav_order: byId.get(p.id).position } : p)),
-      )
+      applyArrangement(items)
       try {
-        await track(() => api.arrangePages(items))
+        await track(() => api.arrangeNav(items))
       } catch (e) {
-        api.fetchPages().then(setPages).catch(() => {})
+        reloadNav()
         throw e
       }
     },
+    [applyArrangement, reloadNav, track],
+  )
+
+  const addNavGroup = useCallback(
+    async (row) => {
+      const created = await track(() => api.createNavGroup(row))
+      setNavGroups((list) => [...list, created])
+      return created
+    },
     [track],
+  )
+
+  const updateNavGroup = useCallback(
+    async (id, patch) => {
+      const updated = await track(() => api.updateNavGroup(id, patch))
+      setNavGroups((list) => list.map((g) => (g.id === id ? updated : g)))
+      return updated
+    },
+    [track],
+  )
+
+  // Deletes a group; its pages and sub-groups take its place in its parent.
+  const removeNavGroup = useCallback(
+    async (group) => {
+      const items = arrangeWithoutGroup(navStructure(pages, navGroups), group.id)
+      await arrangeNav(items)
+      await track(() => api.deleteNavGroup(group.id))
+      setNavGroups((list) => list.filter((g) => g.id !== group.id))
+    },
+    [pages, navGroups, arrangeNav, track],
   )
 
   // ---- Site variables ----
@@ -330,7 +386,11 @@ export function SiteProvider({ children }) {
       addPage,
       updatePage,
       removePage,
-      arrangePages,
+      navGroups,
+      arrangeNav,
+      addNavGroup,
+      updateNavGroup,
+      removeNavGroup,
       pageSections,
       sectionsFor,
       addPageSection,
@@ -361,7 +421,11 @@ export function SiteProvider({ children }) {
       addPage,
       updatePage,
       removePage,
-      arrangePages,
+      navGroups,
+      arrangeNav,
+      addNavGroup,
+      updateNavGroup,
+      removeNavGroup,
       pageSections,
       sectionsFor,
       addPageSection,
@@ -380,7 +444,7 @@ export function SiteProvider({ children }) {
   )
 
   // Wait for saved content before rendering so visitors never see defaults flash first.
-  if ([content, media, pages, pageSections, variableList].includes(null)) return null
+  if ([content, media, pages, pageSections, variableList, navGroups].includes(null)) return null
 
   return <SiteContext.Provider value={value}>{children}</SiteContext.Provider>
 }

@@ -1,26 +1,28 @@
 import { useEffect, useRef, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useSite } from '../lib/site'
-import { navLabel, navTree, pagePath } from '../lib/pages'
+import { navLabel, pagePath } from '../lib/pages'
+import { publicNav } from '../lib/nav'
 
 /**
- * Header navigation built from the Pages list. Pages with child pages get a dropdown: it opens
- * on hover and keyboard focus (CSS), and with the ▾ button on touch screens.
+ * Header navigation built from Pages: pages are links, navigation groups are dropdowns (groups
+ * inside groups open as side menus). Dropdowns open on hover and keyboard focus (CSS), and
+ * by clicking the group name (for touch screens).
  */
 export default function SiteNav() {
-  const { pages } = useSite()
+  const { pages, navGroups } = useSite()
   const { pathname } = useLocation()
-  const [openId, setOpenId] = useState(null)
+  const [openPath, setOpenPath] = useState([]) // ids of the open group and its open sub-groups
   const navRef = useRef(null)
 
-  // Close an open dropdown when clicking elsewhere or pressing Escape.
+  // Close open dropdowns when clicking elsewhere, pressing Escape, or changing page.
   useEffect(() => {
-    if (!openId) return
+    if (!openPath.length) return
     function onPointer(e) {
-      if (!navRef.current?.contains(e.target)) setOpenId(null)
+      if (!navRef.current?.contains(e.target)) setOpenPath([])
     }
     function onKey(e) {
-      if (e.key === 'Escape') setOpenId(null)
+      if (e.key === 'Escape') setOpenPath([])
     }
     document.addEventListener('pointerdown', onPointer)
     document.addEventListener('keydown', onKey)
@@ -28,54 +30,65 @@ export default function SiteNav() {
       document.removeEventListener('pointerdown', onPointer)
       document.removeEventListener('keydown', onKey)
     }
-  }, [openId])
+  }, [openPath])
 
-  const link = (page) => (
-    <NavLink to={pagePath(page)} end={page.system_key === 'home'} onClick={() => setOpenId(null)}>
-      {navLabel(page)}
-    </NavLink>
-  )
+  function toggle(groupId, depth) {
+    setOpenPath((path) => (path[depth] === groupId ? path.slice(0, depth) : [...path.slice(0, depth), groupId]))
+  }
+
+  const renderNode = (node, depth) => {
+    if (node.type === 'page') {
+      const page = node.item
+      return (
+        <li key={node.key} className="nav-item">
+          <NavLink to={pagePath(page)} end={page.system_key === 'home'} onClick={() => setOpenPath([])}>
+            {navLabel(page)}
+          </NavLink>
+        </li>
+      )
+    }
+    const group = node.item
+    const open = openPath[depth] === group.id
+    const menuId = `nav-group-${group.id}`
+    return (
+      <li
+        key={node.key}
+        className={[
+          'nav-item',
+          'has-dropdown',
+          depth > 0 && 'is-submenu',
+          open && 'is-open',
+          containsPath(node, pathname) && 'has-active-child',
+        ]
+          .filter(Boolean)
+          .join(' ')}
+      >
+        <button
+          type="button"
+          className="nav-group-toggle"
+          aria-expanded={open}
+          aria-controls={menuId}
+          onClick={() => toggle(group.id, depth)}
+        >
+          {group.title}
+          <span className="nav-caret" aria-hidden>
+            {depth > 0 ? '▸' : '▾'}
+          </span>
+        </button>
+        <ul className="nav-dropdown" id={menuId}>
+          {node.children.map((child) => renderNode(child, depth + 1))}
+        </ul>
+      </li>
+    )
+  }
 
   return (
     <nav ref={navRef} aria-label="Main">
-      <ul className="nav-list">
-        {navTree(pages).map(({ page, children }) =>
-          children.length ? (
-            <li
-              key={page.id}
-              className={[
-                'nav-item',
-                'has-dropdown',
-                openId === page.id && 'is-open',
-                children.some((c) => pathname === pagePath(c)) && 'has-active-child',
-              ]
-                .filter(Boolean)
-                .join(' ')}
-            >
-              {link(page)}
-              <button
-                type="button"
-                className="nav-dropdown-toggle"
-                aria-expanded={openId === page.id}
-                aria-controls={`nav-dropdown-${page.id}`}
-                aria-label={`${openId === page.id ? 'Hide' : 'Show'} pages under ${navLabel(page)}`}
-                onClick={() => setOpenId((id) => (id === page.id ? null : page.id))}
-              >
-                <span aria-hidden>▾</span>
-              </button>
-              <ul className="nav-dropdown" id={`nav-dropdown-${page.id}`}>
-                {children.map((child) => (
-                  <li key={child.id}>{link(child)}</li>
-                ))}
-              </ul>
-            </li>
-          ) : (
-            <li key={page.id} className="nav-item">
-              {link(page)}
-            </li>
-          ),
-        )}
-      </ul>
+      <ul className="nav-list">{publicNav(pages, navGroups).map((node) => renderNode(node, 0))}</ul>
     </nav>
   )
+}
+
+function containsPath(node, pathname) {
+  return node.children.some((c) => (c.type === 'page' ? pagePath(c.item) === pathname : containsPath(c, pathname)))
 }

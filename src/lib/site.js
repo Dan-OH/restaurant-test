@@ -10,7 +10,9 @@ import { createContext, useContext } from 'react'
  *  - media: the media library, { id: row }; getMedia(id) returns one row or null
  *  - addMedia(row) / updateMedia(id, patch) / removeMedia(id): media library changes
  *  - pages: all pages (drafts only when logged in), ordered by nav_order
- *  - addPage(row) / updatePage(id, patch) / removePage(page) / arrangePages(items)
+ *  - addPage(row) / updatePage(id, patch) / removePage(page)
+ *  - navGroups: navigation groups (dropdowns); addNavGroup / updateNavGroup / removeNavGroup,
+ *    and arrangeNav(items) to save where pages and groups sit (see lib/nav.js)
  *  - pageSections: all page sections; sectionsFor(pageId) returns one page's, in order
  *  - addPageSection(pageId, type, index) / updatePageSection(id, patch) /
  *    removePageSection(section) / movePageSection(section, -1 | 1)

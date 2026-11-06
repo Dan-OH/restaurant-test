@@ -456,63 +456,114 @@ end
 $$;
 
 -- ---------------------------------------------------------------------------
--- Child pages: a page can sit under another page (shown as a dropdown in the nav).
--- One level deep; nav_order is the position among siblings. Deleting a parent moves
--- its children back to the top level. URLs stay flat (/team, not /about/team).
+-- Navigation groups: named groups that show as dropdowns in the header nav
+-- (e.g. "About Us" containing Contact and Team). Groups can contain pages and
+-- other groups, to any depth. Pages never nest under pages.
+-- Pages and groups share one ordering within each container (nav_order).
 -- ---------------------------------------------------------------------------
+create table if not exists public.nav_groups (
+  id         uuid primary key default gen_random_uuid(),
+  title      text not null,
+  parent_id  uuid references public.nav_groups(id) on delete set null,
+  nav_order  integer not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint nav_groups_not_own_parent check (parent_id is null or parent_id <> id)
+);
+
+alter table public.nav_groups enable row level security;
+
+drop policy if exists "Public read nav groups" on public.nav_groups;
+create policy "Public read nav groups" on public.nav_groups
+  for select using (true);
+
+drop policy if exists "Authenticated write nav groups" on public.nav_groups;
+create policy "Authenticated write nav groups" on public.nav_groups
+  for all to authenticated using (true) with check (true);
+
 alter table public.pages
-  add column if not exists parent_id uuid references public.pages(id) on delete set null;
+  add column if not exists group_id uuid references public.nav_groups(id) on delete set null;
 
-alter table public.pages drop constraint if exists pages_not_own_parent;
-alter table public.pages add constraint pages_not_own_parent check (parent_id is null or parent_id <> id);
-
--- Keep nesting valid however pages are saved: Home is never nested, a page can only go under
--- a top-level page, and a page that has children can't be nested.
-create or replace function public.validate_page_parent()
+-- A group can't be placed inside itself or one of its own sub-groups.
+create or replace function public.prevent_nav_group_cycle()
 returns trigger
 language plpgsql
 as $$
 begin
-  if new.parent_id is null then
-    return new;
+  if new.parent_id is not null and exists (
+    with recursive ancestors as (
+      select id, parent_id from public.nav_groups where id = new.parent_id
+      union all
+      select g.id, g.parent_id from public.nav_groups g join ancestors a on g.id = a.parent_id
+    )
+    select 1 from ancestors where id = new.id
+  ) then
+    raise exception 'A group can''t be placed inside itself.';
   end if;
-  if new.system_key = 'home' then
-    raise exception 'The home page can''t be nested under another page.';
-  end if;
-  if exists (select 1 from public.pages where id = new.parent_id and parent_id is not null) then
-    raise exception 'Pages can only be nested one level deep.';
-  end if;
-  if exists (select 1 from public.pages where parent_id = new.id) then
-    raise exception 'A page that has child pages can''t be nested itself.';
-  end if;
+  new.updated_at := now();
   return new;
 end;
 $$;
 
-drop trigger if exists validate_page_parent on public.pages;
-create trigger validate_page_parent
-  before insert or update of parent_id on public.pages
-  for each row execute function public.validate_page_parent();
+drop trigger if exists prevent_nav_group_cycle on public.nav_groups;
+create trigger prevent_nav_group_cycle
+  before insert or update on public.nav_groups
+  for each row execute function public.prevent_nav_group_cycle();
 
--- Saves a whole arrangement at once: items = [{ "id", "parent_id", "position" }, ...].
--- Un-nesting happens before nesting so moves between levels validate cleanly.
-create or replace function public.arrange_pages(items jsonb)
+-- Saves a whole navigation arrangement at once:
+-- items = [{ "type": "page" | "group", "id", "parent": group id or null, "position" }, ...]
+-- Groups are first moved to the top level, then into place, so moves validate cleanly.
+create or replace function public.arrange_nav(items jsonb)
 returns void
 language plpgsql
 security invoker
 as $$
 begin
-  update public.pages p
-     set parent_id = null, nav_order = (i->>'position')::int
+  update public.nav_groups g
+     set parent_id = null
     from jsonb_array_elements(items) i
-   where p.id = (i->>'id')::uuid and i->>'parent_id' is null;
+   where i->>'type' = 'group' and g.id = (i->>'id')::uuid;
+
+  update public.nav_groups g
+     set parent_id = (i->>'parent')::uuid, nav_order = (i->>'position')::int
+    from jsonb_array_elements(items) i
+   where i->>'type' = 'group' and g.id = (i->>'id')::uuid;
 
   update public.pages p
-     set parent_id = (i->>'parent_id')::uuid, nav_order = (i->>'position')::int
+     set group_id = (i->>'parent')::uuid, nav_order = (i->>'position')::int
     from jsonb_array_elements(items) i
-   where p.id = (i->>'id')::uuid and i->>'parent_id' is not null;
+   where i->>'type' = 'page' and p.id = (i->>'id')::uuid;
 end;
 $$;
 
-revoke execute on function public.arrange_pages(jsonb) from anon, public;
-grant  execute on function public.arrange_pages(jsonb) to authenticated;
+revoke execute on function public.arrange_nav(jsonb) from anon, public;
+grant  execute on function public.arrange_nav(jsonb) to authenticated;
+
+-- One-time migration from the earlier "child pages" design (pages.parent_id): each page that
+-- had child pages becomes a group with the same name, containing that page and its children.
+do $$
+declare
+  r record;
+  gid uuid;
+begin
+  if exists (
+    select 1 from information_schema.columns
+     where table_schema = 'public' and table_name = 'pages' and column_name = 'parent_id'
+  ) then
+    for r in
+      execute 'select p.id, p.title, p.nav_order from public.pages p
+                where exists (select 1 from public.pages c where c.parent_id = p.id)'
+    loop
+      insert into public.nav_groups (title, nav_order) values (r.title, r.nav_order) returning id into gid;
+      update public.pages set group_id = gid, nav_order = 0 where id = r.id;
+      execute 'update public.pages set group_id = $1, nav_order = nav_order + 1 where parent_id = $2'
+        using gid, r.id;
+    end loop;
+    drop trigger if exists validate_page_parent on public.pages;
+    alter table public.pages drop column parent_id;
+  end if;
+end
+$$;
+
+drop function if exists public.validate_page_parent();
+drop function if exists public.arrange_pages(jsonb);

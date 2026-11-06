@@ -174,9 +174,27 @@ export async function deletePage(page, contentPrefix) {
   check(await supabase.from('pages').delete().eq('id', page.id))
 }
 
-/** Saves page nesting and order: items = [{ id, parent_id, position }]. */
-export async function arrangePages(items) {
-  check(await supabase.rpc('arrange_pages', { items }))
+// ---- Navigation groups ----
+
+export async function fetchNavGroups() {
+  return check(await supabase.from('nav_groups').select('*').order('nav_order'))
+}
+
+export async function createNavGroup(row) {
+  return check(await supabase.from('nav_groups').insert(row).select().single())
+}
+
+export async function updateNavGroup(id, patch) {
+  return check(await supabase.from('nav_groups').update(patch).eq('id', id).select().single())
+}
+
+export async function deleteNavGroup(id) {
+  check(await supabase.from('nav_groups').delete().eq('id', id))
+}
+
+/** Saves the navigation arrangement: items = [{ type: 'page' | 'group', id, parent, position }]. */
+export async function arrangeNav(items) {
+  check(await supabase.rpc('arrange_nav', { items }))
 }
 
 // ---- Page sections ----

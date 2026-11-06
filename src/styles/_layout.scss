@@ -60,34 +60,34 @@
   display: flex;
   align-items: center;
 
-  // A parent link is highlighted while one of its child pages is open.
-  &.has-active-child > a {
+  // A group is highlighted while one of the pages inside it is open.
+  &.has-active-child > .nav-group-toggle {
     color: $accent;
     font-weight: 600;
   }
 }
 
-.nav-dropdown-toggle {
-  margin-left: 0.15rem;
-  padding: 0.15rem 0.3rem;
+.nav-group-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0;
   border: 0;
-  border-radius: 4px;
   background: none;
-  color: $muted;
+  color: $text;
   font: inherit;
-  line-height: 1;
   cursor: pointer;
-
-  span {
-    display: inline-block;
-    transition: transform 0.15s;
-  }
 
   &:hover,
   &:focus-visible {
-    color: $text;
-    background: $hover-bg;
+    color: $accent;
   }
+}
+
+.nav-caret {
+  font-size: 0.8em;
+  color: $muted;
+  transition: transform 0.15s;
 }
 
 .nav-dropdown {
@@ -112,10 +112,14 @@
     transform 0.15s,
     visibility 0.15s;
 
-  a {
-    display: block;
+  a,
+  .nav-group-toggle {
+    display: flex;
+    width: 100%;
+    justify-content: space-between;
     padding: 0.5rem 1rem;
     white-space: nowrap;
+    text-align: left;
 
     &:hover,
     &:focus-visible {
@@ -142,8 +146,33 @@
   transform: none;
 }
 
-.has-dropdown.is-open .nav-dropdown-toggle span {
+.has-dropdown.is-open > .nav-group-toggle .nav-caret {
   transform: rotate(180deg);
+}
+
+// Groups inside a dropdown open as a side menu.
+.nav-dropdown .nav-item {
+  display: block;
+}
+
+.is-submenu > .nav-dropdown {
+  top: -0.45rem;
+  left: 100%;
+  transform: translateX(4px);
+
+  // Bridge on the left instead of the top.
+  &::before {
+    top: 0;
+    bottom: 0;
+    right: 100%;
+    left: auto;
+    width: 0.6rem;
+    height: auto;
+  }
+}
+
+.is-submenu.is-open > .nav-group-toggle .nav-caret {
+  transform: none;
 }
 
 .site-footer {

@@ -15,7 +15,8 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
-import { TEMPLATES, canNest, pageTree, slugify, validateSlug } from '../../lib/pages'
+import { TEMPLATES, slugify, validateSlug } from '../../lib/pages'
+import { groupOptions, navStructure } from '../../lib/nav'
 import { SEO_LIMITS, formatPageTitle, useSeoSettings } from '../../lib/seo'
 import { useSite } from '../../lib/site'
 import FieldHint from '../FieldHint.jsx'
@@ -38,15 +39,8 @@ export default function PageSettingsDialog({ page, onClose, onSaved }) {
   const [template, setTemplate] = useState(page?.template ?? 'basic')
   const [navLabel, setNavLabel] = useState(page?.nav_label ?? '')
   const [showInNav, setShowInNav] = useState(page?.show_in_nav ?? true)
-  const [parentId, setParentId] = useState(page?.parent_id ?? '')
-
-  // Pages this page can be nested under (top-level pages; see canNest).
-  const asChild = page ?? { id: '__new', system_key: null }
-  const parentOptions = pageTree(site.pages)
-    .map((n) => n.page)
-    .filter((p) => canNest(asChild, p, site.pages))
-  const hasChildren = Boolean(page) && site.pages.some((p) => p.parent_id === page.id)
-  const canHaveParent = asChild.system_key !== 'home' && !hasChildren
+  const [groupId, setGroupId] = useState(page?.group_id ?? '')
+  const groups = groupOptions(navStructure(site.pages, site.navGroups))
   const [published, setPublished] = useState(page?.published ?? false)
   const [seoTitle, setSeoTitle] = useState(page?.seo_title ?? '')
   const [seoDescription, setSeoDescription] = useState(page?.seo_description ?? '')
@@ -74,15 +68,17 @@ export default function PageSettingsDialog({ page, onClose, onSaved }) {
       show_in_nav: showInNav,
       seo_title: seoTitle.trim() || null,
       seo_description: seoDescription.trim() || null,
-      parent_id: parentId || null,
+      group_id: groupId || null,
     }
-    // A new page, or one moved to a different parent, goes at the end of its new siblings.
+    // A new page, or one moved to a different group, goes at the end of that group
+    // (pages and groups share the ordering).
     const siblingsEnd = () =>
       Math.max(
         -1,
-        ...site.pages.filter((p) => p.id !== page?.id && (p.parent_id ?? null) === fields.parent_id).map((p) => p.nav_order),
+        ...site.pages.filter((p) => p.id !== page?.id && (p.group_id ?? null) === fields.group_id).map((p) => p.nav_order),
+        ...site.navGroups.filter((g) => (g.parent_id ?? null) === fields.group_id).map((g) => g.nav_order),
       ) + 1
-    if (!isNew && (page.parent_id ?? null) !== fields.parent_id) fields.nav_order = siblingsEnd()
+    if (!isNew && (page.group_id ?? null) !== fields.group_id) fields.nav_order = siblingsEnd()
     try {
       let saved
       if (isNew) {
@@ -176,25 +172,22 @@ export default function PageSettingsDialog({ page, onClose, onSaved }) {
 
             <TextField
               select
-              label="Parent page"
-              value={canHaveParent ? parentId : ''}
-              onChange={(e) => setParentId(e.target.value)}
-              disabled={!canHaveParent}
+              label="Group"
+              value={groupId}
+              onChange={(e) => setGroupId(e.target.value)}
               fullWidth
               helperText={
-                !canHaveParent
-                  ? asChild.system_key === 'home'
-                    ? 'The home page is always at the top level.'
-                    : 'This page has child pages, so it stays at the top level.'
-                  : 'Child pages appear in a dropdown under their parent in the navigation. Their address stays the same.'
+                groups.length
+                  ? 'Pages in a group appear in its dropdown in the navigation. The page’s address stays the same.'
+                  : 'No groups yet. Create one on the Pages tab to make a dropdown in the navigation.'
               }
             >
               <MenuItem value="">
                 <em>None (top level)</em>
               </MenuItem>
-              {parentOptions.map((p) => (
-                <MenuItem key={p.id} value={p.id}>
-                  {p.title}
+              {groups.map((g) => (
+                <MenuItem key={g.id} value={g.id}>
+                  {g.label}
                 </MenuItem>
               ))}
             </TextField>

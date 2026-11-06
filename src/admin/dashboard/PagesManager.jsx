@@ -5,20 +5,29 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
 import Chip from '@mui/material/Chip'
+import Dialog from '@mui/material/Dialog'
+import DialogActions from '@mui/material/DialogActions'
+import DialogContent from '@mui/material/DialogContent'
+import DialogTitle from '@mui/material/DialogTitle'
 import IconButton from '@mui/material/IconButton'
 import Link from '@mui/material/Link'
 import Stack from '@mui/material/Stack'
+import TextField from '@mui/material/TextField'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import AddIcon from '@mui/icons-material/Add'
+import CreateNewFolderOutlinedIcon from '@mui/icons-material/CreateNewFolderOutlined'
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
+import DriveFileRenameOutlineIcon from '@mui/icons-material/DriveFileRenameOutline'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
+import FolderOutlinedIcon from '@mui/icons-material/FolderOutlined'
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined'
+import { navStructure } from '../../lib/nav'
 import { navLabel, pagePath } from '../../lib/pages'
 import { usePageMeta } from '../../lib/seo'
 import { useSite } from '../../lib/site'
 import { useConfirm } from '../confirm'
-import PageTree from './PageTree.jsx'
+import NavTree from './NavTree.jsx'
 import PageSettingsDialog from './PageSettingsDialog.jsx'
 
 export default function PagesManager() {
@@ -28,8 +37,10 @@ export default function PagesManager() {
   const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
   const [error, setError] = useState(null)
+  const [groupDialog, setGroupDialog] = useState(null) // { group } to rename, or {} to create
 
-  const pages = [...site.pages].sort((a, b) => a.nav_order - b.nav_order)
+  const pages = site.pages
+  const tree = navStructure(pages, site.navGroups)
   // ?edit=<id> opens that page's settings; ?edit=new opens the create dialog.
   const editParam = params.get('edit')
   const editing = editParam === 'new' ? 'new' : pages.find((p) => p.id === editParam)
@@ -45,14 +56,13 @@ export default function PagesManager() {
 
   function arrange(items) {
     setError(null)
-    site.arrangePages(items).catch((e) => setError(`Couldn't save the new arrangement: ${e.message}`))
+    site.arrangeNav(items).catch((e) => setError(`Couldn't save the new arrangement: ${e.message}`))
   }
 
-  async function remove(page) {
-    const children = pages.filter((p) => p.parent_id === page.id)
+  async function removePage(page) {
     const ok = await confirm({
       title: 'Delete page?',
-      message: `"${page.title}" (${pagePath(page)}) and all of its text will be permanently deleted, and it will be removed from the navigation. Images it used stay in Assets.${children.length ? ` Its ${children.length} child page${children.length === 1 ? '' : 's'} will move to the top level.` : ''}`,
+      message: `"${page.title}" (${pagePath(page)}) and all of its text will be permanently deleted, and it will be removed from the navigation. Images it used stay in Assets.`,
       confirmText: page.title,
       confirmLabel: 'Delete page',
       danger: true,
@@ -66,19 +76,49 @@ export default function PagesManager() {
     }
   }
 
+  async function removeGroup(node) {
+    const count = node.children.length
+    const ok = await confirm({
+      title: 'Delete group?',
+      message: count
+        ? `The "${node.item.title}" group will be deleted. The ${count} item${count === 1 ? '' : 's'} inside it won't be deleted; they'll move up into its place.`
+        : `The empty "${node.item.title}" group will be deleted.`,
+      confirmText: node.item.title,
+      confirmLabel: 'Delete group',
+      danger: true,
+    })
+    if (!ok) return
+    setError(null)
+    try {
+      await site.removeNavGroup(node.item)
+    } catch (e) {
+      setError(e.message)
+    }
+  }
+
   return (
-    <Box sx={{ maxWidth: 900 }}>
-      <Stack direction="row" spacing={2} sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+    <Box sx={{ maxWidth: 960 }}>
+      <Stack
+        direction={{ xs: 'column', sm: 'row' }}
+        spacing={1.5}
+        sx={{ alignItems: { sm: 'center' }, justifyContent: 'space-between', mb: 1 }}
+      >
         <Typography variant="h4" component="h1">
           Pages
         </Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => openSettings('new')}>
-          New page
-        </Button>
+        <Stack direction="row" spacing={1}>
+          <Button variant="outlined" startIcon={<CreateNewFolderOutlinedIcon />} onClick={() => setGroupDialog({})}>
+            New group
+          </Button>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => openSettings('new')}>
+            New page
+          </Button>
+        </Stack>
       </Stack>
       <Typography sx={{ color: 'text.secondary' }}>
-        Drag pages to set the order they appear in the site navigation. To make a page a child page (shown
-        in a dropdown under another page), drop it on the “Nest under…” box that appears while dragging.
+        Drag pages and groups to arrange the site navigation. A <strong>group</strong> shows as a dropdown
+        (e.g. an “About Us” group holding Contact and Team): drag pages into it, or onto its “Move into…” box.
+        Groups can contain other groups.
       </Typography>
 
       {error && (
@@ -88,22 +128,32 @@ export default function PagesManager() {
       )}
 
       <Box sx={{ mt: 3 }}>
-        <PageTree
-          pages={pages}
+        <NavTree
+          tree={tree}
           onArrange={arrange}
-          renderRow={(page, { handle, nestZone, dimmed }) => (
-            <PageRow
-              page={page}
-              handle={handle}
-              nestZone={nestZone}
-              dimmed={dimmed}
-              childCount={pages.filter((p) => p.parent_id === page.id).length}
-              sectionCount={site.sectionsFor(page.id).length}
-              onSettings={() => openSettings(page.id)}
-              onEditContent={() => editContent(page)}
-              onDelete={() => remove(page)}
-            />
-          )}
+          renderRow={(node, { handle, dropZone, dimmed }) =>
+            node.type === 'group' ? (
+              <GroupRow
+                group={node.item}
+                itemCount={node.children.length}
+                handle={handle}
+                dropZone={dropZone}
+                dimmed={dimmed}
+                onRename={() => setGroupDialog({ group: node.item })}
+                onDelete={() => removeGroup(node)}
+              />
+            ) : (
+              <PageRow
+                page={node.item}
+                handle={handle}
+                dimmed={dimmed}
+                sectionCount={site.sectionsFor(node.item.id).length}
+                onSettings={() => openSettings(node.item.id)}
+                onEditContent={() => editContent(node.item)}
+                onDelete={() => removePage(node.item)}
+              />
+            )
+          }
         />
       </Box>
 
@@ -118,11 +168,113 @@ export default function PagesManager() {
           }}
         />
       )}
+
+      {groupDialog && (
+        <GroupDialog group={groupDialog.group} tree={tree} onClose={() => setGroupDialog(null)} />
+      )}
     </Box>
   )
 }
 
-function PageRow({ page, handle, nestZone, dimmed, childCount, sectionCount, onSettings, onEditContent, onDelete }) {
+function GroupRow({ group, itemCount, handle, dropZone, dimmed, onRename, onDelete }) {
+  return (
+    <Card
+      variant="outlined"
+      sx={{ opacity: dimmed ? 0.45 : 1, transition: 'opacity 0.15s', bgcolor: 'action.hover', borderStyle: 'dashed' }}
+    >
+      <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', p: 1.25, pr: 2 }}>
+        {handle}
+        <FolderOutlinedIcon color="primary" />
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Stack direction="row" spacing={1} useFlexGap sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+              {group.title}
+            </Typography>
+            <Chip size="small" label="Group" />
+          </Stack>
+          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+            Dropdown in the navigation · {itemCount ? `${itemCount} item${itemCount === 1 ? '' : 's'}` : 'empty: drag pages in'}
+          </Typography>
+        </Box>
+        {dropZone}
+        <Stack direction="row" spacing={0.5} sx={{ flexShrink: 0, display: dropZone ? 'none' : 'flex' }}>
+          <Tooltip title="Rename group">
+            <IconButton size="small" aria-label={`Rename ${group.title}`} onClick={onRename}>
+              <DriveFileRenameOutlineIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Delete group (keeps its pages)">
+            <IconButton size="small" color="error" aria-label={`Delete group ${group.title}`} onClick={onDelete}>
+              <DeleteOutlinedIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Stack>
+      </Stack>
+    </Card>
+  )
+}
+
+function GroupDialog({ group, tree, onClose }) {
+  const site = useSite()
+  const [title, setTitle] = useState(group?.title ?? '')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(null)
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    const name = title.trim()
+    if (!name) return setError('Enter a name.')
+    setBusy(true)
+    setError(null)
+    try {
+      if (group) await site.updateNavGroup(group.id, { title: name })
+      else await site.addNavGroup({ title: name, parent_id: null, nav_order: tree.length })
+      onClose()
+    } catch (err) {
+      setError(err.message)
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Dialog open onClose={() => !busy && onClose()} maxWidth="xs" fullWidth>
+      <form onSubmit={handleSubmit}>
+        <DialogTitle>{group ? 'Rename group' : 'New group'}</DialogTitle>
+        <DialogContent>
+          <TextField
+            label="Group name"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="e.g. About Us"
+            autoFocus
+            fullWidth
+            sx={{ mt: 1 }}
+            helperText={
+              group
+                ? 'Shown as the dropdown’s label in the navigation.'
+                : 'Shown as a dropdown in the navigation. It’s added at the bottom of the list; drag pages into it.'
+            }
+          />
+          {error && (
+            <Alert severity="error" sx={{ mt: 2 }}>
+              {error}
+            </Alert>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={onClose} disabled={busy}>
+            Cancel
+          </Button>
+          <Button type="submit" variant="contained" loading={busy}>
+            {group ? 'Save' : 'Create group'}
+          </Button>
+        </DialogActions>
+      </form>
+    </Dialog>
+  )
+}
+
+function PageRow({ page, handle, dimmed, sectionCount, onSettings, onEditContent, onDelete }) {
   const path = pagePath(page)
   const label = navLabel(page)
 
@@ -137,9 +289,6 @@ function PageRow({ page, handle, nestZone, dimmed, childCount, sectionCount, onS
               {page.title}
             </Typography>
             {page.system_key && <Chip size="small" label="Built-in" />}
-            {childCount > 0 && (
-              <Chip size="small" variant="outlined" color="primary" label={`${childCount} child page${childCount === 1 ? '' : 's'}`} />
-            )}
             {!page.published && <Chip size="small" color="warning" label="Draft" />}
             {!page.show_in_nav && <Chip size="small" variant="outlined" label="Hidden from navigation" />}
             {page.show_in_nav && label !== page.title && (
@@ -155,13 +304,7 @@ function PageRow({ page, handle, nestZone, dimmed, childCount, sectionCount, onS
           </Typography>
         </Box>
 
-        {/* While dragging, eligible pages show their nest drop zone in place of the actions. */}
-        {nestZone}
-        <Stack
-          direction="row"
-          spacing={0.5}
-          sx={{ alignItems: 'center', flexShrink: 0, display: nestZone ? 'none' : 'flex' }}
-        >
+        <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', flexShrink: 0 }}>
           <Button
             size="small"
             variant="outlined"
