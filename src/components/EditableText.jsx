@@ -1,12 +1,13 @@
-import { lazy, Suspense, useLayoutEffect, useMemo, useRef } from 'react'
+import { Suspense, useLayoutEffect, useMemo, useRef } from 'react'
 import { useSite } from '../lib/site'
 import { splitTokens } from '../lib/variables'
 import { renderRichText, richTextIsEmpty } from '../lib/richText'
-import EditErrorBoundary from './EditErrorBoundary.jsx'
+import ErrorBoundary from './ErrorBoundary.jsx'
 import { OPEN_VARIABLE_PICKER, caretIn, caretRect, renderEditable, serializeEditable } from './editableDom'
+import { lazyWithReload } from '../lib/lazyWithReload'
 
 // Formatted-text editor (Tiptap + MUI toolbar), loaded the first time edit mode is used.
-const RichTextField = lazy(() => import('../admin/richtext/RichTextField.jsx'))
+const RichTextField = lazyWithReload(() => import('../admin/richtext/RichTextField.jsx'))
 
 /**
  * A piece of page text that can be edited in place while edit mode is on.
@@ -77,7 +78,7 @@ function RichText({ value, variables, editing, className, placeholder, onSave })
 
   if (!editing) return richTextIsEmpty(value) ? null : staticView
   return (
-    <EditErrorBoundary fallback={staticView}>
+    <ErrorBoundary label="The text editor" fallback={staticView}>
       <Suspense fallback={staticView}>
         <RichTextField
           value={value}
@@ -87,7 +88,7 @@ function RichText({ value, variables, editing, className, placeholder, onSave })
           onSave={onSave}
         />
       </Suspense>
-    </EditErrorBoundary>
+    </ErrorBoundary>
   )
 }
 

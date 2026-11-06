@@ -17,9 +17,10 @@ edit mode:
 - Every piece of page text gets a dashed outline. Click it, type, then click away (or press Enter)
   to save. Escape cancels. Multi-line fields like opening hours accept Enter for new lines.
 - **Formatted text:** paragraph fields (section text, the homepage info boxes…) are formatted-text
-  editors. While you're in one, a toolbar appears above it: bold, italic, underline, link,
-  subheading, bulleted/numbered lists, quote, insert variable, and clear formatting (Ctrl+B/I/U
-  work too). Enter starts a new paragraph; Shift+Enter adds a line break. Saved when you click away.
+  editors. While you're in one, a toolbar appears above it: a **Paragraph / Heading 2–4** menu,
+  bold, italic, underline, link, bulleted/numbered lists, quote, insert variable, and clear formatting
+  (Ctrl+B/I/U and Ctrl+Alt+0/2/3/4 work too). Heading 1 isn't available: each page's title is its
+  only H1, which is better for accessibility and search engines. Enter starts a new paragraph; Shift+Enter adds a line break. Saved when you click away.
 - **Images:** every image spot (the homepage hero, section images…) has an **Edit image** button
   (**Add image** when empty), or drop a file anywhere on the spot. It opens the image dialog:
   - **Sizes come from the spot**, not the crop tool: the homepage hero is 1920×720, created pages'
@@ -248,6 +249,18 @@ supabase/
                                media library + migration (safe to re-run)
   seed.sql                     sample data
 ```
+
+## Troubleshooting
+
+- **Admin features stop loading mid-session** (editors not editable, section tools missing, blank
+  dashboard): the page is out of date. After a deploy (or, in development, after Vite re-bundles
+  dependencies), the files an open page asks for no longer exist. Lazily loaded code uses
+  `lazyWithReload` (`src/lib/lazyWithReload.js`), which reloads the page once to pick up the
+  current files; a hard refresh does the same. `vite.config.js` scans all source files at startup
+  so new dependencies are bundled up front; after installing packages, restart `npm run dev`.
+- **"Something went wrong" screen**: the app crashed while rendering; the error is in the
+  browser console. Edit-mode controls have their own error boundaries, so a bug there only
+  disables that control.
 
 ## Deploying
 

@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'
+import { Suspense } from 'react'
 import { Route, Routes } from 'react-router-dom'
 import Layout from './components/Layout.jsx'
 import Home from './pages/Home.jsx'
@@ -7,11 +7,12 @@ import DynamicPage from './pages/DynamicPage.jsx'
 import NotFound from './pages/NotFound.jsx'
 import { isConfigured } from './lib/supabase'
 import { SiteProvider } from './lib/SiteProvider.jsx'
+import { lazyWithReload } from './lib/lazyWithReload'
 
 // Admin UI (MUI) lives in src/admin and is loaded only when needed,
 // so visitors to the public site never download it.
-const Login = lazy(() => import('./admin/Login.jsx'))
-const AdminDashboard = lazy(() => import('./admin/dashboard/AdminDashboard.jsx'))
+const Login = lazyWithReload(() => import('./admin/Login.jsx'))
+const AdminDashboard = lazyWithReload(() => import('./admin/dashboard/AdminDashboard.jsx'))
 
 export default function App() {
   if (!isConfigured) {

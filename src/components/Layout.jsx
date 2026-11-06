@@ -1,12 +1,13 @@
-import { lazy, Suspense } from 'react'
+import { Suspense } from 'react'
 import { Link, NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../lib/useAuth'
 import { useSite } from '../lib/site'
 import { navLabel, navPages, pagePath } from '../lib/pages'
 import EditableText from './EditableText.jsx'
+import { lazyWithReload } from '../lib/lazyWithReload'
 
 // Only logged-in users see the admin bar, so only they download it (and MUI).
-const AdminBar = lazy(() => import('../admin/AdminBar.jsx'))
+const AdminBar = lazyWithReload(() => import('../admin/AdminBar.jsx'))
 
 const YEAR = new Date().getFullYear()
 

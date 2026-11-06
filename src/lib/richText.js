@@ -6,8 +6,9 @@ import DOMPurify from 'dompurify'
  * {{key}} tokens inside the HTML, so renaming/deleting variables works the same as in plain text.
  */
 
-// Only formatting the editor can produce is allowed through to visitors.
-const ALLOWED_TAGS = ['p', 'br', 'strong', 'em', 'u', 's', 'a', 'ul', 'ol', 'li', 'h3', 'blockquote']
+// Only formatting the editor can produce is allowed through to visitors. Headings are h2–h4:
+// never h1, which each page already uses for its title (see HEADING_LEVELS in the editor).
+const ALLOWED_TAGS = ['p', 'br', 'strong', 'em', 'u', 's', 'a', 'ul', 'ol', 'li', 'h2', 'h3', 'h4', 'blockquote']
 const ALLOWED_ATTR = ['href', 'target', 'rel']
 
 let hooked = false

@@ -1,12 +1,13 @@
-import { Fragment, lazy, Suspense } from 'react'
+import { Fragment, Suspense } from 'react'
 import { useSite } from '../lib/site'
-import EditErrorBoundary from './EditErrorBoundary.jsx'
+import ErrorBoundary from './ErrorBoundary.jsx'
 import { SECTION_COMPONENTS } from '../sections'
 import { sectionPrefix, sectionSettings } from '../sections/types'
+import { lazyWithReload } from '../lib/lazyWithReload'
 
 // Admin-only editing controls (MUI), loaded the first time edit mode is turned on.
-const SectionToolbar = lazy(() => import('../admin/sections/SectionToolbar.jsx'))
-const AddSection = lazy(() => import('../admin/sections/AddSection.jsx'))
+const SectionToolbar = lazyWithReload(() => import('../admin/sections/SectionToolbar.jsx'))
+const AddSection = lazyWithReload(() => import('../admin/sections/AddSection.jsx'))
 
 /**
  * Renders a page's sections (see src/sections/). In edit mode, each section gets a toolbar
@@ -23,32 +24,32 @@ export default function PageSections({ page }) {
   return (
     <div className={`page-sections${canEdit ? ' is-editing' : ''}`}>
       {canEdit && sections.length > 0 && (
-        <EditErrorBoundary>
+        <ErrorBoundary label="An editing control">
           <Suspense fallback={null}>
             <AddSection page={page} index={0} variant="inline" />
           </Suspense>
-        </EditErrorBoundary>
+        </ErrorBoundary>
       )}
 
       {sections.map((section, i) => (
         <Fragment key={section.id}>
           <Section section={section} index={i} count={sections.length} editing={canEdit} />
           {canEdit && i < sections.length - 1 && (
-            <EditErrorBoundary>
+            <ErrorBoundary label="An editing control">
               <Suspense fallback={null}>
                 <AddSection page={page} index={i + 1} variant="inline" />
               </Suspense>
-            </EditErrorBoundary>
+            </ErrorBoundary>
           )}
         </Fragment>
       ))}
 
       {canEdit && (
-        <EditErrorBoundary>
+        <ErrorBoundary label="An editing control">
           <Suspense fallback={null}>
             <AddSection page={page} index={sections.length} variant="end" />
           </Suspense>
-        </EditErrorBoundary>
+        </ErrorBoundary>
       )}
     </div>
   )
@@ -62,11 +63,11 @@ function Section({ section, index, count, editing }) {
   return (
     <section id={sectionPrefix(section)} className={`page-section page-section--${section.type}`}>
       {editing && (
-        <EditErrorBoundary>
+        <ErrorBoundary label="An editing control">
           <Suspense fallback={null}>
             <SectionToolbar section={section} index={index} count={count} />
           </Suspense>
-        </EditErrorBoundary>
+        </ErrorBoundary>
       )}
       {Component ? (
         <Component prefix={sectionPrefix(section)} settings={sectionSettings(section)} />

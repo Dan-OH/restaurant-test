@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from 'react'
+import { Suspense, useState } from 'react'
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom'
 import AppBar from '@mui/material/AppBar'
 import Box from '@mui/material/Box'
@@ -26,9 +26,10 @@ import AdminTheme from './AdminTheme.jsx'
 import { BAR_COLOR, BAR_EDITING_COLOR } from './theme'
 import VariablePicker from './variables/VariablePicker.jsx'
 import VariableTooltip from './variables/VariableTooltip.jsx'
+import { lazyWithReload } from '../lib/lazyWithReload'
 
 // Loaded the first time "Page settings" is clicked.
-const PageSettingsDialog = lazy(() => import('./dashboard/PageSettingsDialog.jsx'))
+const PageSettingsDialog = lazyWithReload(() => import('./dashboard/PageSettingsDialog.jsx'))
 
 /** Sticky bar above the site for logged-in users: edit-mode toggle, dashboard link, save status. */
 export default function AdminBar() {

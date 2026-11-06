@@ -4,13 +4,16 @@ import { BrowserRouter } from 'react-router-dom'
 import './styles/main.scss'
 import App from './App.jsx'
 import { AuthProvider } from './lib/AuthProvider.jsx'
+import ErrorBoundary, { CrashScreen } from './components/ErrorBoundary.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <BrowserRouter>
-      <AuthProvider>
-        <App />
-      </AuthProvider>
-    </BrowserRouter>
+    <ErrorBoundary label="The app" fallback={<CrashScreen />}>
+      <BrowserRouter>
+        <AuthProvider>
+          <App />
+        </AuthProvider>
+      </BrowserRouter>
+    </ErrorBoundary>
   </StrictMode>,
 )

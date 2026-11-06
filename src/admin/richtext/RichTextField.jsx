@@ -6,6 +6,9 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Divider from '@mui/material/Divider'
 import IconButton from '@mui/material/IconButton'
+import ListItemText from '@mui/material/ListItemText'
+import Menu from '@mui/material/Menu'
+import MenuItem from '@mui/material/MenuItem'
 import Paper from '@mui/material/Paper'
 import Popover from '@mui/material/Popover'
 import Stack from '@mui/material/Stack'
@@ -20,11 +23,20 @@ import FormatListNumberedIcon from '@mui/icons-material/FormatListNumbered'
 import FormatQuoteIcon from '@mui/icons-material/FormatQuote'
 import FormatUnderlinedIcon from '@mui/icons-material/FormatUnderlined'
 import InsertLinkIcon from '@mui/icons-material/InsertLink'
-import TitleIcon from '@mui/icons-material/Title'
+import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown'
 import { OPEN_VARIABLE_PICKER, createChip } from '../../components/editableDom'
 import { stripVariableSpans, toHtml, tokensToSpans } from '../../lib/richText'
 import AdminTheme from '../AdminTheme.jsx'
 import { VariableNode, setChipVariables } from './VariableNode'
+
+// Heading levels offered in formatted text. No h1: each page already has its title as the h1.
+// Keep in sync with ALLOWED_TAGS in src/lib/richText.js.
+const HEADING_LEVELS = [2, 3, 4]
+
+const BLOCK_TYPES = [
+  { value: 'paragraph', label: 'Paragraph', shortcut: 'Ctrl+Alt+0' },
+  ...HEADING_LEVELS.map((level) => ({ value: `h${level}`, label: `Heading ${level}`, level, shortcut: `Ctrl+Alt+${level}` })),
+]
 
 /**
  * In-place formatted-text editor (Tiptap) for paragraph fields in edit mode. Text keeps the
@@ -43,6 +55,7 @@ function RichTextEditor({ value, variables, placeholder, className, onSave }) {
   setChipVariables(variables)
   const lastSaved = useRef(null) // HTML as last loaded/saved, to skip saves with no changes
   const [linkAnchor, setLinkAnchor] = useState(null)
+  const [blockAnchor, setBlockAnchor] = useState(null) // paragraph/heading menu
   // Latest props for the editor's callbacks, which are set up once.
   const latest = useRef({ value, onSave })
   useEffect(() => {
@@ -52,7 +65,7 @@ function RichTextEditor({ value, variables, placeholder, className, onSave }) {
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
-        heading: { levels: [3] },
+        heading: { levels: HEADING_LEVELS },
         code: false,
         codeBlock: false,
         horizontalRule: false,
@@ -110,10 +123,14 @@ function RichTextEditor({ value, variables, placeholder, className, onSave }) {
 
   return (
     <Box sx={{ position: 'relative' }}>
-      {isLive(editor) && (focused || linkAnchor) && (
-        <Toolbar editor={editor} onLink={(el) => setLinkAnchor(el)} />
+      {/* Stays visible while one of its menus is open (they take focus from the editor). */}
+      {isLive(editor) && (focused || linkAnchor || blockAnchor) && (
+        <Toolbar editor={editor} onLink={(el) => setLinkAnchor(el)} onBlockMenu={(el) => setBlockAnchor(el)} />
       )}
       <EditorContent editor={editor} />
+      {isLive(editor) && blockAnchor && (
+        <BlockTypeMenu editor={editor} anchor={blockAnchor} onClose={() => setBlockAnchor(null)} />
+      )}
       {isLive(editor) && linkAnchor && <LinkPopover editor={editor} anchor={linkAnchor} onClose={() => setLinkAnchor(null)} />}
     </Box>
   )
@@ -162,7 +179,49 @@ function openPickerOnBraces(editor) {
   )
 }
 
-function Toolbar({ editor, onLink }) {
+// Which block type the cursor is in: 'paragraph', 'h2', 'h3'…, or null (e.g. inside a list or quote).
+function currentBlockType(editor) {
+  for (const level of HEADING_LEVELS) if (editor.isActive('heading', { level })) return `h${level}`
+  return editor.isActive('paragraph') ? 'paragraph' : null
+}
+
+function BlockTypeMenu({ editor, anchor, onClose }) {
+  const current = currentBlockType(editor)
+
+  function choose(type) {
+    const chain = editor.chain().focus()
+    if (type.level) chain.setHeading({ level: type.level }).run()
+    else chain.setParagraph().run()
+    onClose()
+  }
+
+  return (
+    <Menu
+      open
+      anchorEl={anchor}
+      onClose={() => {
+        onClose()
+        editor.commands.focus()
+      }}
+      disableRestoreFocus
+    >
+      {BLOCK_TYPES.map((type) => (
+        <MenuItem key={type.value} selected={type.value === current} onClick={() => choose(type)}>
+          <ListItemText
+            primary={type.label}
+            secondary={type.shortcut}
+            slotProps={{
+              // Preview each style roughly at its relative size.
+              primary: { sx: type.level ? { fontWeight: 700, fontSize: `${1.35 - (type.level - 2) * 0.15}rem` } : undefined },
+            }}
+          />
+        </MenuItem>
+      ))}
+    </Menu>
+  )
+}
+
+function Toolbar({ editor, onLink, onBlockMenu }) {
   const state = useEditorState({
     editor,
     selector: ({ editor }) => ({
@@ -170,7 +229,7 @@ function Toolbar({ editor, onLink }) {
       italic: editor.isActive('italic'),
       underline: editor.isActive('underline'),
       link: editor.isActive('link'),
-      heading: editor.isActive('heading', { level: 3 }),
+      blockType: currentBlockType(editor),
       bulletList: editor.isActive('bulletList'),
       orderedList: editor.isActive('orderedList'),
       blockquote: editor.isActive('blockquote'),
@@ -184,7 +243,6 @@ function Toolbar({ editor, onLink }) {
     { key: 'underline', label: 'Underline (Ctrl+U)', icon: <FormatUnderlinedIcon />, run: () => chain().toggleUnderline().run() },
     { key: 'link', label: 'Link', icon: <InsertLinkIcon />, run: (e) => onLink(e.currentTarget) },
     'divider',
-    { key: 'heading', label: 'Subheading', icon: <TitleIcon />, run: () => chain().toggleHeading({ level: 3 }).run() },
     { key: 'bulletList', label: 'Bulleted list', icon: <FormatListBulletedIcon />, run: () => chain().toggleBulletList().run() },
     { key: 'orderedList', label: 'Numbered list', icon: <FormatListNumberedIcon />, run: () => chain().toggleOrderedList().run() },
     { key: 'blockquote', label: 'Quote', icon: <FormatQuoteIcon />, run: () => chain().toggleBlockquote().run() },
@@ -218,6 +276,20 @@ function Toolbar({ editor, onLink }) {
         textShadow: 'none',
       }}
     >
+      <Tooltip title="Paragraph or heading">
+        <Button
+          size="small"
+          color="inherit"
+          endIcon={<ArrowDropDownIcon />}
+          aria-haspopup="menu"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={(e) => onBlockMenu(e.currentTarget)}
+          sx={{ minWidth: 112, justifyContent: 'space-between', fontWeight: 500, px: 1 }}
+        >
+          {BLOCK_TYPES.find((t) => t.value === state.blockType)?.label ?? 'Paragraph'}
+        </Button>
+      </Tooltip>
+      <Divider orientation="vertical" flexItem sx={{ mx: 0.25 }} />
       {buttons.map((b, i) =>
         b === 'divider' ? (
           <Divider key={`d${i}`} orientation="vertical" flexItem sx={{ mx: 0.25 }} />
