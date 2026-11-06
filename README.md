@@ -20,6 +20,9 @@ edit mode:
   drop a file) opens a crop & resize dialog: drag to position, zoom, pick a shape (21:9, 16:9, 3:2 or
   the original), and pick an output size. **Crop & resize** reopens the dialog with the previous crop
   restored. You can also set alt text, or **Remove** the image from the page (it stays in Files).
+- **Variables:** while editing text, type `{{` (or click **Insert variable** in the admin bar) to
+  insert a site variable such as the address or phone number. It shows as a tinted chip in edit mode
+  and as plain text to visitors, and always displays the variable's current value.
 - **Page sections:** every page can have sections, which are blocks built from layouts defined in
   `src/sections/`. In edit mode, **Add section** (between sections, or the box at the bottom) opens a
   layout picker: Text, Text with image, Image, Two images. Each section has a toolbar to move it
@@ -48,6 +51,10 @@ The admin bar also links to the **Dashboard** (`/admin`), where site-wide settin
   image to edit its alt text, crop & resize it, **optimize** it (format WebP/AVIF/JPEG, quality,
   maximum width, with a live before/after file size preview), or delete it (also removes it from
   any page using it).
+- **Variables:** reusable text (address, phone, restaurant name…). Create, edit and delete
+  variables; each shows its `{{key}}` token (click to copy), its value and which pages use it.
+  Changing a value updates it everywhere. Renaming a key rewrites every use; deleting a variable
+  writes its current value into the places that used it, so nothing disappears.
 - **Site settings:** the website title (browser tab and search result headline; other pages show
   as "Menu · Title") and the meta description, with length guides and a search result preview.
 
@@ -88,6 +95,12 @@ and add it to the `NAV` list in `AdminLayout.jsx`.
   a template (`template` column; currently `basic`: optional header image, heading, intro, then the page's sections),
   in `src/pages/DynamicPage.jsx`. To add a template, add it to `TEMPLATES` in `src/lib/pages.js` and a
   case in `PageTemplate`.
+- **Variables:** `site_variables` rows (`key`, `label`, `value`, `description`). Any `EditableText`
+  value can contain `{{key}}` tokens; visitors see them replaced with the value, and SEO titles and
+  descriptions are resolved too. In edit mode `src/components/editableDom.js` renders tokens as
+  non-editable chips and turns them back into tokens on save; `src/admin/variables/VariablePicker.jsx`
+  is the insert popup. `schema.sql` seeds `restaurant_name`, `address` and `phone`, and uses them in
+  the header, footer and homepage text unless those were already edited. Helpers: `src/lib/variables.js`.
 - **Page sections:** `page_sections` rows (`page_id`, `type`, `settings` JSON, `position`). A
   section's text and images are stored in `site_content` under `section-<id>.<field>`; a database
   trigger deletes them when the section (or its page) is deleted. Images stay in Files. Layouts are
@@ -157,6 +170,7 @@ src/
     EditableText.jsx           text that becomes editable in edit mode
     EditableImage.jsx          image; lazy-loads its edit controls in edit mode
     PageSections.jsx           renders a page's sections; lazy-loads section editing in edit mode
+    editableDom.js             edit-mode DOM helpers: variable chips, serializing, caret
   pages/                       Home, Menu (lazy-loads the menu editor in edit mode),
                                DynamicPage (created pages + templates), NotFound
   sections/                    page section layouts: types.js (metadata), index.js (components),
@@ -174,6 +188,7 @@ src/
     FieldHint.jsx              helper text with a character counter
     menu/                      MenuEditor, SectionForm, ItemForm
     sections/                  page section toolbar + settings, Add section picker, previews
+    variables/                 Variables dashboard page, variable dialog, insert-variable picker
     dashboard/                 AdminDashboard (routes + auth guard), AdminLayout, SiteSettings,
                                PagesManager, PageSettingsDialog,
                                FileManager, MediaDetails, OptimizePanel
@@ -184,6 +199,7 @@ src/
     AuthProvider.jsx           session state; useAuth.js for the hook
     SiteProvider.jsx           edit mode, page text, media library, save status; site.js for useSite()
     seo.js                     site title/description settings and usePageMeta()
+    variables.js               {{key}} tokens: parsing, resolving, renaming, usage
     pages.js                   page paths, navigation, slugs, templates
     media.js                   placement naming (page/feature), usage lookup, size/format formatting
     useSignOut.js              sign out + leave edit mode

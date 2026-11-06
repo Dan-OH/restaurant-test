@@ -14,6 +14,8 @@ import { createContext, useContext } from 'react'
  *  - pageSections: all page sections; sectionsFor(pageId) returns one page's, in order
  *  - addPageSection(pageId, type, index) / updatePageSection(id, patch) /
  *    removePageSection(section) / movePageSection(section, -1 | 1)
+ *  - variableList / variables ({ key: variable }): site variables used as {{key}} in text
+ *  - addVariable(row) / updateVariable(id, patch) / removeVariable(id)
  *  - track(fn): run an async save and reflect it in the admin bar's status
  *  - status: 'idle' | 'saving' | 'saved' | 'error', and statusError
  */

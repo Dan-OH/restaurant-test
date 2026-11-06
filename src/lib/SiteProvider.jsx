@@ -3,6 +3,7 @@ import { SiteContext } from './site'
 import { useAuth } from './useAuth'
 import * as api from './api'
 import { contentPrefix, FALLBACK_PAGES } from './pages'
+import { FALLBACK_VARIABLES } from './variables'
 
 export function SiteProvider({ children }) {
   const { session } = useAuth()
@@ -11,6 +12,7 @@ export function SiteProvider({ children }) {
   const [media, setMedia] = useState(null) // { [id]: row }
   const [pages, setPages] = useState(null) // array, ordered by nav_order
   const [pageSections, setPageSections] = useState(null) // array, all pages' sections
+  const [variableList, setVariableList] = useState(null) // array of site variables
   const [status, setStatus] = useState('idle')
   const [statusError, setStatusError] = useState(null)
   const pending = useRef(0)
@@ -25,6 +27,13 @@ export function SiteProvider({ children }) {
       .catch((e) => {
         console.error('Could not load site content, using defaults:', e.message)
         setContent({})
+      })
+    api
+      .fetchVariables()
+      .then(setVariableList)
+      .catch((e) => {
+        console.error('Could not load variables, using defaults:', e.message)
+        setVariableList(FALLBACK_VARIABLES)
       })
     api
       .fetchMedia()
@@ -189,6 +198,40 @@ export function SiteProvider({ children }) {
     [track],
   )
 
+  // ---- Site variables ----
+
+  // { key: variable } for looking up {{key}} tokens.
+  const variables = useMemo(
+    () => Object.fromEntries((variableList ?? []).map((v) => [v.key, v])),
+    [variableList],
+  )
+
+  const addVariable = useCallback(
+    async (row) => {
+      const created = await track(() => api.createVariable(row))
+      setVariableList((list) => [...list, created])
+      return created
+    },
+    [track],
+  )
+
+  const updateVariable = useCallback(
+    async (id, patch) => {
+      const updated = await track(() => api.updateVariable(id, patch))
+      setVariableList((list) => list.map((v) => (v.id === id ? updated : v)))
+      return updated
+    },
+    [track],
+  )
+
+  const removeVariable = useCallback(
+    async (id) => {
+      await track(() => api.deleteVariable(id))
+      setVariableList((list) => list.filter((v) => v.id !== id))
+    },
+    [track],
+  )
+
   // ---- Page sections ----
 
   // Save a page's section order and mirror it locally.
@@ -287,6 +330,11 @@ export function SiteProvider({ children }) {
       updatePageSection,
       removePageSection,
       movePageSection,
+      variableList,
+      variables,
+      addVariable,
+      updateVariable,
+      removeVariable,
       track,
       status,
       statusError,
@@ -313,6 +361,11 @@ export function SiteProvider({ children }) {
       updatePageSection,
       removePageSection,
       movePageSection,
+      variableList,
+      variables,
+      addVariable,
+      updateVariable,
+      removeVariable,
       track,
       status,
       statusError,
@@ -320,7 +373,7 @@ export function SiteProvider({ children }) {
   )
 
   // Wait for saved content before rendering so visitors never see defaults flash first.
-  if (content === null || media === null || pages === null || pageSections === null) return null
+  if ([content, media, pages, pageSections, variableList].includes(null)) return null
 
   return <SiteContext.Provider value={value}>{children}</SiteContext.Provider>
 }

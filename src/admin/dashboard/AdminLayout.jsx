@@ -10,6 +10,7 @@ import Toolbar from '@mui/material/Toolbar'
 import Typography from '@mui/material/Typography'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined'
+import DataObjectIcon from '@mui/icons-material/DataObject'
 import LogoutIcon from '@mui/icons-material/Logout'
 import PhotoLibraryOutlinedIcon from '@mui/icons-material/PhotoLibraryOutlined'
 import TuneOutlinedIcon from '@mui/icons-material/TuneOutlined'
@@ -23,6 +24,7 @@ const NAV = [
   { to: '/admin', label: 'Site settings', icon: <TuneOutlinedIcon />, end: true },
   { to: '/admin/pages', label: 'Pages', icon: <ArticleOutlinedIcon /> },
   { to: '/admin/files', label: 'Files', icon: <PhotoLibraryOutlinedIcon /> },
+  { to: '/admin/variables', label: 'Variables', icon: <DataObjectIcon /> },
 ]
 
 const SIDEBAR_WIDTH = 240

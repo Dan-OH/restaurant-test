@@ -42,7 +42,7 @@ export default function Home() {
             Location
           </EditableText>
           <EditableText id="home.location.body" as="p" multiline>
-            {'123 Main Street\nYour City'}
+            {'{{address}}'}
           </EditableText>
         </div>
         <div>
@@ -50,7 +50,7 @@ export default function Home() {
             Reservations
           </EditableText>
           <EditableText id="home.reservations.body" as="p" multiline>
-            {'Call us at (555) 123-4567\nWalk-ins always welcome'}
+            {'Call us at {{phone}}\nWalk-ins always welcome'}
           </EditableText>
         </div>
       </section>

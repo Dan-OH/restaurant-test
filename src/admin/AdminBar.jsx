@@ -16,12 +16,15 @@ import EditIcon from '@mui/icons-material/Edit'
 import ErrorOutlinedIcon from '@mui/icons-material/ErrorOutlined'
 import LogoutIcon from '@mui/icons-material/Logout'
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined'
+import DataObjectIcon from '@mui/icons-material/DataObject'
+import { OPEN_VARIABLE_PICKER } from '../components/editableDom'
 import { useAuth } from '../lib/useAuth'
 import { useSite } from '../lib/site'
 import { useSignOut } from '../lib/useSignOut'
 import { findPageByPath, pagePath } from '../lib/pages'
 import AdminTheme from './AdminTheme.jsx'
 import { BAR_COLOR, BAR_EDITING_COLOR } from './theme'
+import VariablePicker from './variables/VariablePicker.jsx'
 
 // Loaded the first time "Page settings" is clicked.
 const PageSettingsDialog = lazy(() => import('./dashboard/PageSettingsDialog.jsx'))
@@ -84,6 +87,22 @@ export default function AdminBar() {
             </Tooltip>
           )}
           {editing && (
+            <Tooltip title="Insert a site variable (like the address) where the cursor is. Tip: type {{ while editing.">
+              <Button
+                color="inherit"
+                size="small"
+                startIcon={<DataObjectIcon />}
+                // Keep focus (and the caret) in the text field being edited.
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() =>
+                  window.dispatchEvent(new CustomEvent(OPEN_VARIABLE_PICKER, { detail: { fromSelection: true } }))
+                }
+              >
+                Insert variable
+              </Button>
+            </Tooltip>
+          )}
+          {editing && (
             <Typography variant="body2" sx={{ opacity: 0.8, display: { xs: 'none', lg: 'block' } }}>
               Click any outlined text to change it.
             </Typography>
@@ -100,6 +119,8 @@ export default function AdminBar() {
           </Button>
         </Toolbar>
       </AppBar>
+
+      {editing && <VariablePicker />}
 
       {settingsOpen && currentPage && (
         <Suspense fallback={null}>

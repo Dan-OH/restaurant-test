@@ -7,6 +7,7 @@ import AdminLayout from './AdminLayout.jsx'
 import SiteSettings from './SiteSettings.jsx'
 import FileManager from './FileManager.jsx'
 import PagesManager from './PagesManager.jsx'
+import VariablesManager from '../variables/VariablesManager.jsx'
 
 /**
  * Everything under /admin. Lazy-loaded from App.jsx.
@@ -21,6 +22,7 @@ export default function AdminDashboard() {
             <Route index element={<SiteSettings />} />
             <Route path="pages" element={<PagesManager />} />
             <Route path="files" element={<FileManager />} />
+            <Route path="variables" element={<VariablesManager />} />
             <Route path="*" element={<Navigate to="/admin" replace />} />
           </Route>
         </Routes>

@@ -24,7 +24,7 @@ export default function Layout() {
       <header className="site-header">
         <div className="container header-inner">
           <Link to="/" className="brand" onClick={(e) => editing && e.preventDefault()}>
-            <EditableText id="site.name">The Restaurant</EditableText>
+            <EditableText id="site.name">{'{{restaurant_name}}'}</EditableText>
           </Link>
           <nav>
             {navPages(pages).map((page) => (
@@ -44,7 +44,7 @@ export default function Layout() {
         <div className="container footer-inner">
           <span>
             © {YEAR}{' '}
-            <EditableText id="footer.text">The Restaurant · 123 Main Street · (555) 123-4567</EditableText>
+            <EditableText id="footer.text">{'{{restaurant_name}} · {{phone}}'}</EditableText>
           </span>
           {!session && (
             <Link to="/login" className="staff-login">

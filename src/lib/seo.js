@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useSite } from './site'
+import { resolveVariables } from './variables'
 
 // site_content keys for site-wide settings, and their defaults.
 export const SEO_KEYS = {
@@ -35,8 +36,16 @@ export function formatPageTitle(pageTitle, siteTitle) {
  */
 export function usePageMeta(pageTitle, page) {
   const site = useSeoSettings()
-  const fullTitle = page?.seo_title?.trim() || formatPageTitle(pageTitle, site.title)
-  const description = page?.seo_description?.trim() || site.description
+  const { variables } = useSite()
+  // Titles and descriptions can use site variables, e.g. "Dinner in {{address}}".
+  const fullTitle = resolveVariables(
+    page?.seo_title?.trim() || formatPageTitle(pageTitle, site.title),
+    variables,
+  ).replace(/\s*\n\s*/g, ' ')
+  const description = resolveVariables(page?.seo_description?.trim() || site.description, variables).replace(
+    /\s*\n\s*/g,
+    ' ',
+  )
 
   useEffect(() => {
     document.title = fullTitle

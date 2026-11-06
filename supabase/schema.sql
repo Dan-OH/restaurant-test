@@ -362,3 +362,43 @@ begin
   end loop;
 end
 $$;
+
+-- ---------------------------------------------------------------------------
+-- Site variables: reusable pieces of text (address, phone…) managed in one place.
+-- Page text references them as {{key}}; changing a value updates it everywhere.
+-- ---------------------------------------------------------------------------
+create table if not exists public.site_variables (
+  id          uuid primary key default gen_random_uuid(),
+  key         text not null unique,
+  label       text not null,
+  value       text not null default '',
+  description text,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now(),
+  constraint site_variables_key_format check (key ~ '^[a-z][a-z0-9_]*$')
+);
+
+alter table public.site_variables enable row level security;
+
+drop policy if exists "Public read variables" on public.site_variables;
+create policy "Public read variables" on public.site_variables
+  for select using (true);
+
+drop policy if exists "Authenticated write variables" on public.site_variables;
+create policy "Authenticated write variables" on public.site_variables
+  for all to authenticated using (true) with check (true);
+
+-- Starter variables (kept as-is if they already exist).
+insert into public.site_variables (key, label, value, description) values
+  ('restaurant_name', 'Restaurant name', 'The Restaurant', 'Shown in the header and footer.'),
+  ('address', 'Address', E'123 Main Street\nYour City', 'Street address, used on the homepage.'),
+  ('phone', 'Phone number', '(555) 123-4567', 'Main phone number for reservations.')
+on conflict (key) do nothing;
+
+-- Use the starter variables in the default texts, unless those texts were already edited.
+insert into public.site_content (key, value) values
+  ('site.name', '{{restaurant_name}}'),
+  ('home.location.body', '{{address}}'),
+  ('home.reservations.body', E'Call us at {{phone}}\nWalk-ins always welcome'),
+  ('footer.text', '{{restaurant_name}} · {{phone}}')
+on conflict (key) do nothing;

@@ -43,3 +43,31 @@ div.editable:empty {
   display: block;
   min-height: 6em;
 }
+
+// A site variable inside text being edited (see components/editableDom.js). Uses the
+// surrounding text color so it reads well on light and dark backgrounds (e.g. the hero).
+.var-chip {
+  display: inline;
+  padding: 0.05em 0.45em;
+  border: 1px solid color-mix(in srgb, currentColor 35%, transparent);
+  border-radius: 0.5em;
+  background: color-mix(in srgb, #2e5e4e 14%, transparent);
+  white-space: pre-line;
+  cursor: default;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone; // keep the pill shape when a long value wraps
+
+  &::before {
+    content: '{ }';
+    margin-right: 0.35em;
+    font-size: 0.7em;
+    font-weight: 700;
+    opacity: 0.6;
+    vertical-align: 0.1em;
+  }
+
+  &.is-missing {
+    border-style: dashed;
+    background: color-mix(in srgb, $danger 14%, transparent);
+  }
+}

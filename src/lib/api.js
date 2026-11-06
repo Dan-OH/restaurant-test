@@ -207,3 +207,28 @@ export async function deletePageSection(id) {
 export async function reorderPageSections(ids) {
   check(await supabase.rpc('reorder_page_sections', { ids }))
 }
+
+// ---- Site variables ----
+
+export async function fetchVariables() {
+  return check(await supabase.from('site_variables').select('*').order('label'))
+}
+
+export async function createVariable(row) {
+  return check(await supabase.from('site_variables').insert(row).select().single())
+}
+
+export async function updateVariable(id, patch) {
+  return check(
+    await supabase
+      .from('site_variables')
+      .update({ ...patch, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single(),
+  )
+}
+
+export async function deleteVariable(id) {
+  check(await supabase.from('site_variables').delete().eq('id', id))
+}
