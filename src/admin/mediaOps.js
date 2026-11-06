@@ -1,6 +1,6 @@
 import { deleteImage, imageUrl, uploadImage } from '../lib/api'
 import { measureImage, renderImage } from '../lib/images'
-import { findUsages } from '../lib/media'
+import { findUsages, removeFromPlacement } from '../lib/media'
 
 /**
  * Media library operations shared by the page editor and the dashboard's file manager.
@@ -105,7 +105,12 @@ export async function rerenderMedia(site, media, settings, rendered) {
 /** Deletes an image everywhere: clears its placements, removes the row and both files. */
 export async function deleteMediaEverywhere(site, media) {
   const usages = findUsages(site.content, media.id)
-  if (usages.length) await site.saveTexts(Object.fromEntries(usages.map((u) => [u.key, ''])))
+  // Single-image placements are cleared; multi-image ones (slideshows) just drop this image.
+  if (usages.length) {
+    await site.saveTexts(
+      Object.fromEntries(usages.map((u) => [u.key, removeFromPlacement(site.content[u.key], media.id)])),
+    )
+  }
   await site.removeMedia(media.id)
   for (const p of new Set([media.path, media.original_path])) {
     if (p) deleteImage(p).catch(() => {})

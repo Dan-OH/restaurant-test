@@ -25,7 +25,9 @@ edit mode:
 The admin bar also links to the **Dashboard** (`/admin`), where site-wide settings live:
 
 - **Files:** every uploaded image, with where it's used (page chips; links to each page), size and
-  format, and warnings for missing alt text. Filter by in use / not used / missing alt text. Open an
+  format, and warnings for missing alt text. Search; sort by date, name, file size, dimensions or
+  usage; group by page or by feature (hero images, slideshows…); filter by in use / not used / missing
+  alt text. Sort and grouping choices are remembered in your browser. Open an
   image to edit its alt text, crop & resize it, **optimize** it (format WebP/AVIF/JPEG, quality,
   maximum width, with a live before/after file size preview), or delete it (also removes it from
   any page using it).
@@ -71,9 +73,13 @@ and add it to the `NAV` list in `AdminLayout.jsx`.
   Files are stored in the public `site-images` Supabase Storage bucket (10 MB limit, images only).
   Cropping and optimizing always re-render from the original, so repeated edits never lose quality.
   Placements on the page (`<EditableImage id="home.hero.image" ...>`) store a media id in
-  `site_content`, so an edit in Files updates every page using that image. The file manager works out
-  the page from the first part of the placement id (`home.` → Home, `menu.` → Menu, `site.`/`footer.`
-  → All pages; see `src/lib/media.js`). Name new placements the same way.
+  `site_content`, so an edit in Files updates every page using that image.
+- **Image placement names:** `<page>.<feature>.<name>`, e.g. `home.hero.image`. The file manager
+  reads the page and feature from the name to show "Used on" and to group images. A placement's value
+  is one media id, or a JSON array of ids for features with several images: a future slideshow saved
+  as `home.slideshow.main = ["id1","id2"]` automatically appears under **Slideshows**, labelled
+  "Main slideshow · image 2 of 5". Register display names and ordering for new pages and features in
+  `PAGES` / `FEATURES` in `src/lib/media.js`.
 - **Settings:** dashboard settings are stored in `site_content` too, under `settings.*` keys
   (see `src/lib/seo.js`). `usePageMeta()` applies the title and description on each page.
   Search engines like Google run JavaScript and pick these up. Link previews on social media and
@@ -118,6 +124,7 @@ src/
     AdminBar.jsx               sticky logged-in bar with the edit-mode toggle
     ImageControls.jsx          upload/crop/replace/remove panel for EditableImage
     mediaOps.js                create / re-render / delete media (shared by editor and Files)
+    usePersistentState.js      remembers view preferences (e.g. Files sort) in localStorage
     ImageCropper.jsx           crop & resize dialog (react-easy-crop)
     Login.jsx                  staff login page
     menu/                      MenuEditor, SortableList (drag & drop), SectionForm, ItemForm
@@ -130,7 +137,7 @@ src/
     AuthProvider.jsx           session state; useAuth.js for the hook
     SiteProvider.jsx           edit mode, page text, media library, save status; site.js for useSite()
     seo.js                     site title/description settings and usePageMeta()
-    media.js                   placement → page mapping, file size/format formatting
+    media.js                   placement naming (page/feature), usage lookup, size/format formatting
     useSignOut.js              sign out + leave edit mode
   styles/                      public site SCSS; main.scss imports the partials
 supabase/
