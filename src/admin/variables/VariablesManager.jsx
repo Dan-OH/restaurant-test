@@ -18,6 +18,7 @@ import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import { usePageMeta } from '../../lib/seo'
 import { useSite } from '../../lib/site'
 import { replaceToken, tokenFor } from '../../lib/variables'
+import { escapeHtml, isHtml } from '../../lib/richText'
 import { variableUsage } from './usage'
 import { useConfirm } from '../confirm'
 import VariableDialog from './VariableDialog.jsx'
@@ -50,7 +51,14 @@ export default function VariablesManager() {
     try {
       if (keys.length) {
         await site.saveTexts(
-          Object.fromEntries(keys.map((k) => [k, replaceToken(site.content[k], variable.key, variable.value)])),
+          Object.fromEntries(
+            keys.map((k) => {
+              const text = site.content[k]
+              // Formatted (HTML) fields need the value escaped, with line breaks as <br>.
+              const value = isHtml(text) ? escapeHtml(variable.value).replace(/\n/g, '<br>') : variable.value
+              return [k, replaceToken(text, variable.key, value)]
+            }),
+          ),
         )
       }
       await site.removeVariable(variable.id)

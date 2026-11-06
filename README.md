@@ -16,6 +16,10 @@ edit mode:
 
 - Every piece of page text gets a dashed outline. Click it, type, then click away (or press Enter)
   to save. Escape cancels. Multi-line fields like opening hours accept Enter for new lines.
+- **Formatted text:** paragraph fields (section text, the homepage info boxes…) are formatted-text
+  editors. While you're in one, a toolbar appears above it: bold, italic, underline, link,
+  subheading, bulleted/numbered lists, quote, insert variable, and clear formatting (Ctrl+B/I/U
+  work too). Enter starts a new paragraph; Shift+Enter adds a line break. Saved when you click away.
 - **Images:** every image spot (the homepage hero, section images…) has an **Edit image** button
   (**Add image** when empty), or drop a file anywhere on the spot. It opens the image dialog:
   - **Sizes come from the spot**, not the crop tool: the homepage hero is 1920×720, created pages'
@@ -108,6 +112,14 @@ and add it to the `NAV` list in `AdminLayout.jsx`.
   a template (`template` column; currently `basic`: optional header image, heading, intro, then the page's sections),
   in `src/pages/DynamicPage.jsx`. To add a template, add it to `TEMPLATES` in `src/lib/pages.js` and a
   case in `PageTemplate`.
+- **Formatted text:** `EditableText` with `multiline` is a formatted-text field. In edit mode it
+  loads a [Tiptap](https://tiptap.dev) editor (`src/admin/richtext/`, lazy-loaded so visitors never
+  download it) that edits in place with the site's own styles, plus an MUI toolbar. Values are stored
+  as HTML; older plain-text values are converted on the fly (blank lines → paragraphs). For visitors,
+  `src/lib/richText.js` sanitizes the HTML with DOMPurify (only the formatting the editor produces is
+  allowed; scripts, event handlers and `javascript:` links are stripped) and fills in variables.
+  Variables are stored as plain `{{key}}` text inside the HTML, so renames, deletes and usage
+  tracking work the same as in plain text. Styles: `src/styles/_rich-text.scss`.
 - **Variables:** `site_variables` rows (`key`, `label`, `value`, `description`). Any `EditableText`
   value can contain `{{key}}` tokens; visitors see them replaced with the value, and SEO titles and
   descriptions are resolved too. In edit mode `src/components/editableDom.js` renders tokens as
@@ -214,6 +226,7 @@ src/
     menu/                      MenuEditor, SectionForm, ItemForm
     sections/                  page section toolbar + settings, Add section picker, previews
     variables/                 Variables dashboard page, variable dialog, insert-variable picker
+    richtext/                  formatted-text editor (Tiptap): RichTextField + toolbar, VariableNode
     dashboard/                 AdminDashboard (routes + auth guard), AdminLayout, SiteSettings,
                                PagesManager, PageSettingsDialog,
                                AssetsManager, MediaDetails, OptimizePanel
@@ -225,6 +238,7 @@ src/
     SiteProvider.jsx           edit mode, page text, media library, save status; site.js for useSite()
     seo.js                     site title/description settings and usePageMeta()
     variables.js               {{key}} tokens: parsing, resolving, renaming, usage
+    richText.js                formatted text: plain→HTML, sanitizing (DOMPurify), variables
     pages.js                   page paths, navigation, slugs, templates
     media.js                   placement naming (page/feature), usage lookup, size/format formatting
     useSignOut.js              sign out + leave edit mode

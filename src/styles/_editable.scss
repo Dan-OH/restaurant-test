@@ -82,3 +82,27 @@ div.editable:empty {
   outline: 3px dashed #2e5e4e;
   outline-offset: -3px;
 }
+
+// Formatted-text editor (Tiptap) in edit mode: outline comes from .editable above.
+.editable-rich {
+  min-height: 1.5em;
+
+  &:focus {
+    outline: 2px solid $accent;
+  }
+
+  // Placeholder for an empty editor.
+  p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    float: left;
+    height: 0;
+    pointer-events: none;
+    opacity: 0.45;
+    font-style: italic;
+  }
+
+  // Selected variable chip (click selects it as a single unit).
+  .var-chip.ProseMirror-selectednode {
+    outline: 2px solid $accent;
+  }
+}

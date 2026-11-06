@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { useSite } from '../lib/site'
 import { imageUrl } from '../lib/api'
+import EditErrorBoundary from './EditErrorBoundary.jsx'
 
 // Admin-only UI (MUI) is loaded on demand so visitors never download it.
 const ImageControls = lazy(() => import('../admin/ImageControls.jsx'))
@@ -36,9 +37,11 @@ export default function EditableImage({ id, folder, className, label = 'image', 
       )}
       {editing && !media && placeholder && <div className="image-placeholder">No {label} yet</div>}
       {editing && (
-        <Suspense fallback={null}>
-          <ImageControls id={id} folder={folder} label={label} media={media} size={size} />
-        </Suspense>
+        <EditErrorBoundary>
+          <Suspense fallback={null}>
+            <ImageControls id={id} folder={folder} label={label} media={media} size={size} />
+          </Suspense>
+        </EditErrorBoundary>
       )}
     </>
   )

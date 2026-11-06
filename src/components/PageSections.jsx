@@ -1,5 +1,6 @@
 import { Fragment, lazy, Suspense } from 'react'
 import { useSite } from '../lib/site'
+import EditErrorBoundary from './EditErrorBoundary.jsx'
 import { SECTION_COMPONENTS } from '../sections'
 import { sectionPrefix, sectionSettings } from '../sections/types'
 
@@ -22,26 +23,32 @@ export default function PageSections({ page }) {
   return (
     <div className={`page-sections${canEdit ? ' is-editing' : ''}`}>
       {canEdit && sections.length > 0 && (
-        <Suspense fallback={null}>
-          <AddSection page={page} index={0} variant="inline" />
-        </Suspense>
+        <EditErrorBoundary>
+          <Suspense fallback={null}>
+            <AddSection page={page} index={0} variant="inline" />
+          </Suspense>
+        </EditErrorBoundary>
       )}
 
       {sections.map((section, i) => (
         <Fragment key={section.id}>
           <Section section={section} index={i} count={sections.length} editing={canEdit} />
           {canEdit && i < sections.length - 1 && (
-            <Suspense fallback={null}>
-              <AddSection page={page} index={i + 1} variant="inline" />
-            </Suspense>
+            <EditErrorBoundary>
+              <Suspense fallback={null}>
+                <AddSection page={page} index={i + 1} variant="inline" />
+              </Suspense>
+            </EditErrorBoundary>
           )}
         </Fragment>
       ))}
 
       {canEdit && (
-        <Suspense fallback={null}>
-          <AddSection page={page} index={sections.length} variant="end" />
-        </Suspense>
+        <EditErrorBoundary>
+          <Suspense fallback={null}>
+            <AddSection page={page} index={sections.length} variant="end" />
+          </Suspense>
+        </EditErrorBoundary>
       )}
     </div>
   )
@@ -55,9 +62,11 @@ function Section({ section, index, count, editing }) {
   return (
     <section id={sectionPrefix(section)} className={`page-section page-section--${section.type}`}>
       {editing && (
-        <Suspense fallback={null}>
-          <SectionToolbar section={section} index={index} count={count} />
-        </Suspense>
+        <EditErrorBoundary>
+          <Suspense fallback={null}>
+            <SectionToolbar section={section} index={index} count={count} />
+          </Suspense>
+        </EditErrorBoundary>
       )}
       {Component ? (
         <Component prefix={sectionPrefix(section)} settings={sectionSettings(section)} />

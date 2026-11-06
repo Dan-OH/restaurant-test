@@ -22,7 +22,8 @@ import { tokenFor } from '../../lib/variables'
  */
 export default function VariablePicker() {
   const { variableList, variables } = useSite()
-  // The field being edited ({ el, range, removeBefore }); a ref because it holds DOM nodes.
+  // The field being edited; a ref because it holds DOM nodes. Either a plain field
+  // ({ el, range, removeBefore }) or a formatted-text editor ({ api: { insert, focus, blur } }).
   const targetRef = useRef(null)
   const [anchor, setAnchor] = useState(null) // caret position while the picker is open
   const [query, setQuery] = useState('')
@@ -35,15 +36,19 @@ export default function VariablePicker() {
       let detail = e.detail
       if (detail.fromSelection) {
         // From the admin bar: use the caret in whichever field is being edited.
-        const el = document.activeElement?.closest?.('.editable')
+        const rich = document.activeElement?.closest?.('[data-rich-editor]')
+        const el = !rich && document.activeElement?.closest?.('.editable')
         const range = el && caretIn(el)
-        if (!range) {
+        if (rich?.richApi) {
+          detail = { api: rich.richApi, rect: rich.richApi.caretRect() }
+        } else if (range) {
+          detail = { el, range: range.cloneRange(), rect: caretRect(range, el), removeBefore: 0 }
+        } else {
           setHint('Click into a piece of text first, then insert a variable.')
           return
         }
-        detail = { el, range: range.cloneRange(), rect: caretRect(range, el), removeBefore: 0 }
       }
-      detail.el.dataset.picking = '1' // stop the field saving while the picker has focus
+      if (detail.el) detail.el.dataset.picking = '1' // stop the field saving while the picker has focus
       targetRef.current = detail
       setQuery('')
       setActive(0)
@@ -76,18 +81,24 @@ export default function VariablePicker() {
     const target = targetRef.current
     targetRef.current = null
     setAnchor(null)
-    if (target) delete target.el.dataset.picking
+    if (target?.el) delete target.el.dataset.picking
     return target
   }
 
   function choose(variable) {
-    const { el, range, removeBefore } = finish()
-    insertChip(el, range, variable.key, variables, removeBefore)
+    const target = finish()
+    if (!target) return
+    if (target.api) target.api.insert(variable.key)
+    else insertChip(target.el, target.range, variable.key, variables, target.removeBefore)
   }
 
   function close() {
     const target = finish()
     if (!target) return
+    if (target.api) {
+      target.api.focus()
+      return
+    }
     const { el, range } = target
     // Return to the field where the user was typing.
     el.focus()
@@ -100,6 +111,10 @@ export default function VariablePicker() {
   function leave() {
     const target = finish()
     if (!target) return
+    if (target.api) {
+      target.api.blur()
+      return
+    }
     target.el.focus()
     target.el.blur()
   }

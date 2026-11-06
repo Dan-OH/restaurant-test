@@ -1,0 +1,59 @@
+@use 'variables' as *;
+
+// Formatted text from paragraph fields (see lib/richText.js and admin/richtext/).
+.rich-text {
+  > :first-child {
+    margin-top: 0;
+  }
+
+  > :last-child {
+    margin-bottom: 0;
+  }
+
+  p {
+    margin: 0 0 0.9em;
+  }
+
+  h3 {
+    margin: 1.4em 0 0.5em;
+    font-size: 1.25em;
+  }
+
+  ul,
+  ol {
+    margin: 0 0 0.9em;
+    padding-left: 1.4em;
+  }
+
+  li {
+    margin-bottom: 0.25em;
+
+    > p {
+      margin: 0;
+    }
+  }
+
+  blockquote {
+    margin: 0 0 0.9em;
+    padding: 0.2em 0 0.2em 1em;
+    border-left: 3px solid $accent;
+    color: $muted;
+    font-style: italic;
+
+    p:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  a {
+    color: $accent;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+}
+
+// Text on dark backgrounds (e.g. the hero) keeps its own colors.
+.hero .rich-text a,
+.hero .rich-text blockquote {
+  color: inherit;
+}

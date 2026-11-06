@@ -1,7 +1,12 @@
-import { useLayoutEffect, useRef } from 'react'
+import { lazy, Suspense, useLayoutEffect, useMemo, useRef } from 'react'
 import { useSite } from '../lib/site'
 import { splitTokens } from '../lib/variables'
+import { renderRichText, richTextIsEmpty } from '../lib/richText'
+import EditErrorBoundary from './EditErrorBoundary.jsx'
 import { OPEN_VARIABLE_PICKER, caretIn, caretRect, renderEditable, serializeEditable } from './editableDom'
+
+// Formatted-text editor (Tiptap + MUI toolbar), loaded the first time edit mode is used.
+const RichTextField = lazy(() => import('../admin/richtext/RichTextField.jsx'))
 
 /**
  * A piece of page text that can be edited in place while edit mode is on.
@@ -10,7 +15,9 @@ import { OPEN_VARIABLE_PICKER, caretIn, caretRect, renderEditable, serializeEdit
  *
  * `id` must be unique across the site; it's the key the text is saved under.
  * The children are the default text, shown until someone saves an edit.
- * Set `multiline` to allow line breaks (Enter); otherwise Enter finishes editing.
+ * Set `multiline` for paragraph text: it becomes a formatted-text field (bold, italic, links,
+ * lists…) stored as HTML and always rendered in a <div>. Pass rich={false} for multi-line
+ * plain text instead. Otherwise Enter finishes editing.
  * `placeholder` is shown in edit mode while the field is empty.
  *
  * Text can contain site variables as {{key}} (e.g. {{address}}). Visitors see the variable's
@@ -22,11 +29,26 @@ export default function EditableText({
   multiline = false,
   className,
   placeholder = 'Click to add text',
+  rich = multiline,
   children,
 }) {
   const { editing, getText, saveText, variables } = useSite()
   const fallback = typeof children === 'string' ? children : ''
   const value = getText(id, fallback)
+
+  if (rich) {
+    return (
+      <RichText
+        value={value}
+        variables={variables}
+        editing={editing}
+        className={className}
+        placeholder={placeholder}
+        onSave={(next) => saveText(id, next).catch(() => {})}
+      />
+    )
+  }
+
   const classes = [className, multiline && 'multiline'].filter(Boolean).join(' ') || undefined
 
   // Empty fields render nothing for visitors; in edit mode they show a placeholder.
@@ -45,6 +67,27 @@ export default function EditableText({
       placeholder={placeholder}
       onSave={(next) => saveText(id, next).catch(() => {})} // failure shows in the admin bar
     />
+  )
+}
+
+function RichText({ value, variables, editing, className, placeholder, onSave }) {
+  const html = useMemo(() => renderRichText(value, variables), [value, variables])
+  const classes = [className, 'rich-text'].filter(Boolean).join(' ')
+  const staticView = <div className={classes} dangerouslySetInnerHTML={{ __html: html }} />
+
+  if (!editing) return richTextIsEmpty(value) ? null : staticView
+  return (
+    <EditErrorBoundary fallback={staticView}>
+      <Suspense fallback={staticView}>
+        <RichTextField
+          value={value}
+          variables={variables}
+          className={className}
+          placeholder={placeholder}
+          onSave={onSave}
+        />
+      </Suspense>
+    </EditErrorBoundary>
   )
 }
 
