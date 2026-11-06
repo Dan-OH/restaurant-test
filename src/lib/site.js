@@ -11,6 +11,9 @@ import { createContext, useContext } from 'react'
  *  - addMedia(row) / updateMedia(id, patch) / removeMedia(id): media library changes
  *  - pages: all pages (drafts only when logged in), ordered by nav_order
  *  - addPage(row) / updatePage(id, patch) / removePage(page) / reorderPages(list)
+ *  - pageSections: all page sections; sectionsFor(pageId) returns one page's, in order
+ *  - addPageSection(pageId, type, index) / updatePageSection(id, patch) /
+ *    removePageSection(section) / movePageSection(section, -1 | 1)
  *  - track(fn): run an async save and reflect it in the admin bar's status
  *  - status: 'idle' | 'saving' | 'saved' | 'error', and statusError
  */

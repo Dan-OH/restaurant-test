@@ -177,3 +177,33 @@ export async function deletePage(page, contentPrefix) {
 export async function reorderPages(ids) {
   check(await supabase.rpc('reorder_pages', { ids }))
 }
+
+// ---- Page sections ----
+
+export async function fetchPageSections() {
+  return check(await supabase.from('page_sections').select('*').order('position'))
+}
+
+export async function createPageSection(row) {
+  return check(await supabase.from('page_sections').insert(row).select().single())
+}
+
+export async function updatePageSection(id, patch) {
+  return check(
+    await supabase
+      .from('page_sections')
+      .update({ ...patch, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single(),
+  )
+}
+
+/** Deleting a section also deletes its text/image placements (database trigger). */
+export async function deletePageSection(id) {
+  check(await supabase.from('page_sections').delete().eq('id', id))
+}
+
+export async function reorderPageSections(ids) {
+  check(await supabase.rpc('reorder_page_sections', { ids }))
+}

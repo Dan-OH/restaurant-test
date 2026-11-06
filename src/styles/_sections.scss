@@ -1,0 +1,154 @@
+@use 'variables' as *;
+@use 'mixins' as *;
+
+// Page sections (layouts in src/sections/).
+
+.page-sections {
+  padding: 1rem 0 3rem;
+}
+
+.page-section {
+  position: relative; // anchors the edit-mode section toolbar
+  padding: 2.5rem 0;
+
+  h2 {
+    margin-bottom: 0.75rem;
+  }
+}
+
+// In edit mode, leave room for the section toolbar and outline sections on hover.
+.page-sections.is-editing .page-section {
+  padding-top: 3.75rem;
+  outline: 1px dashed transparent;
+  outline-offset: -1px;
+  transition: outline-color 0.15s;
+
+  &:hover {
+    outline-color: rgba($accent, 0.35);
+  }
+}
+
+.section-body {
+  font-size: 1.05rem;
+  line-height: 1.7;
+}
+
+// Image slot: positioned so the edit controls can sit in its corner.
+.section-media {
+  position: relative;
+}
+
+.section-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: $radius;
+}
+
+// Shown in edit mode where an image hasn't been added yet.
+.image-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 4 / 3;
+  border: 2px dashed $border;
+  border-radius: $radius;
+  color: $muted;
+  background: repeating-linear-gradient(45deg, $bg, $bg 12px, #f3ede6 12px, #f3ede6 24px);
+}
+
+figure {
+  &.section-image,
+  .section-two-images & {
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+
+  figcaption {
+    margin-top: 0.6rem;
+    font-size: 0.9rem;
+    color: $muted;
+    text-align: center;
+  }
+}
+
+// --- Text ---
+.section-text {
+  > * {
+    max-width: 720px;
+  }
+
+  &.align-center {
+    text-align: center;
+
+    > * {
+      margin-left: auto;
+      margin-right: auto;
+    }
+  }
+}
+
+// --- Text with image ---
+.section-text-image {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2.5rem;
+  align-items: center;
+
+  &.image-left .section-media {
+    order: -1;
+  }
+
+  &.image-right .section-media {
+    order: 1;
+  }
+
+  // No image (visitors only see this): let the text use the full width.
+  &:not(:has(.section-img)):not(:has(.image-placeholder)) {
+    grid-template-columns: 1fr;
+  }
+
+  @include small-screen {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+
+    // Image first on phones, whichever side it's on.
+    &.image-left .section-media,
+    &.image-right .section-media {
+      order: -1;
+    }
+  }
+}
+
+// --- Image ---
+.section-image {
+  &.is-full {
+    .section-img {
+      border-radius: 0;
+    }
+
+    .image-placeholder {
+      aspect-ratio: 21 / 9;
+      border-radius: 0;
+    }
+
+    figcaption {
+      padding: 0 1rem;
+    }
+  }
+
+  &:not(.is-full) .image-placeholder {
+    aspect-ratio: 16 / 9;
+  }
+}
+
+// --- Two images ---
+.section-two-images {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+
+  @include small-screen {
+    grid-template-columns: 1fr;
+  }
+}

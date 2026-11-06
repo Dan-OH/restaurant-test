@@ -279,3 +279,86 @@ $$;
 
 revoke execute on function public.reorder_pages(uuid[]) from anon, public;
 grant  execute on function public.reorder_pages(uuid[]) to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Page sections. Each page can have a list of sections built from layouts defined
+-- in src/sections/ (`type`), with per-section `settings` (e.g. image left/right).
+-- A section's text and images live in site_content under "section-<id>." keys.
+-- ---------------------------------------------------------------------------
+create table if not exists public.page_sections (
+  id         uuid primary key default gen_random_uuid(),
+  page_id    uuid not null references public.pages(id) on delete cascade,
+  type       text not null,
+  settings   jsonb not null default '{}'::jsonb,
+  position   integer not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists page_sections_page_position_idx
+  on public.page_sections (page_id, position);
+
+alter table public.page_sections enable row level security;
+
+-- Visitors see sections of pages they can see (the pages policy hides drafts from them).
+drop policy if exists "Public read page sections" on public.page_sections;
+create policy "Public read page sections" on public.page_sections
+  for select using (exists (select 1 from public.pages p where p.id = page_id));
+
+drop policy if exists "Authenticated write page sections" on public.page_sections;
+create policy "Authenticated write page sections" on public.page_sections
+  for all to authenticated using (true) with check (true);
+
+-- When a section is deleted (directly or with its page), delete its text/image placements.
+-- Images themselves stay in the media library.
+create or replace function public.delete_section_content()
+returns trigger
+language plpgsql
+as $$
+begin
+  delete from public.site_content where key like 'section-' || old.id || '.%';
+  return old;
+end;
+$$;
+
+drop trigger if exists delete_section_content on public.page_sections;
+create trigger delete_section_content
+  after delete on public.page_sections
+  for each row execute function public.delete_section_content();
+
+create or replace function public.reorder_page_sections(ids uuid[])
+returns void
+language sql
+security invoker
+as $$
+  update public.page_sections s
+     set position = o.ord - 1, updated_at = now()
+    from unnest(ids) with ordinality as o(id, ord)
+   where s.id = o.id;
+$$;
+
+revoke execute on function public.reorder_page_sections(uuid[]) from anon, public;
+grant  execute on function public.reorder_page_sections(uuid[]) to authenticated;
+
+-- One-time migration: created pages used to have a single "body" text field. Move any
+-- existing body text into a Text section at the top of the page. Safe to re-run.
+do $$
+declare
+  r record;
+  new_id uuid;
+begin
+  for r in
+    select c.key, c.value, p.id as page_id
+      from public.site_content c
+      join public.pages p on c.key = 'page-' || p.id || '.body'
+     where c.value <> ''
+  loop
+    insert into public.page_sections (page_id, type, position)
+    values (r.page_id, 'text', -1)
+    returning id into new_id;
+
+    insert into public.site_content (key, value) values ('section-' || new_id || '.body', r.value);
+    delete from public.site_content where key = r.key;
+  end loop;
+end
+$$;

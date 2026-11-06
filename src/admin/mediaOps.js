@@ -104,7 +104,7 @@ export async function rerenderMedia(site, media, settings, rendered) {
 
 /** Deletes an image everywhere: clears its placements, removes the row and both files. */
 export async function deleteMediaEverywhere(site, media) {
-  const usages = findUsages(site.content, media.id, site.pages)
+  const usages = findUsages(site.content, media.id, { pages: site.pages, sections: site.pageSections })
   // Single-image placements are cleared; multi-image ones (slideshows) just drop this image.
   if (usages.length) {
     await site.saveTexts(

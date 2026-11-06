@@ -93,6 +93,7 @@ export default function PagesManager() {
           renderItem={(page) => (
             <PageRow
               page={page}
+              sectionCount={site.sectionsFor(page.id).length}
               onSettings={() => openSettings(page.id)}
               onEditContent={() => editContent(page)}
               onDelete={() => remove(page)}
@@ -116,7 +117,7 @@ export default function PagesManager() {
   )
 }
 
-function PageRow({ page, onSettings, onEditContent, onDelete }) {
+function PageRow({ page, sectionCount, onSettings, onEditContent, onDelete }) {
   const path = pagePath(page)
   const label = navLabel(page)
 
@@ -141,6 +142,7 @@ function PageRow({ page, onSettings, onEditContent, onDelete }) {
             <Link component={RouterLink} to={path} underline="hover" sx={{ fontFamily: 'monospace' }}>
               {path}
             </Link>
+            {` · ${sectionCount} section${sectionCount === 1 ? '' : 's'}`}
             {page.updated_at && ` · Updated ${new Date(page.updated_at).toLocaleDateString()}`}
           </Typography>
         </Box>

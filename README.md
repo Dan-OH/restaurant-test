@@ -20,6 +20,12 @@ edit mode:
   drop a file) opens a crop & resize dialog: drag to position, zoom, pick a shape (21:9, 16:9, 3:2 or
   the original), and pick an output size. **Crop & resize** reopens the dialog with the previous crop
   restored. You can also set alt text, or **Remove** the image from the page (it stays in Files).
+- **Page sections:** every page can have sections, which are blocks built from layouts defined in
+  `src/sections/`. In edit mode, **Add section** (between sections, or the box at the bottom) opens a
+  layout picker: Text, Text with image, Image, Two images. Each section has a toolbar to move it
+  up or down, open its **settings** (e.g. image on the left or right, contained or full-width image;
+  changes apply instantly), or delete it (type its heading or layout name to confirm). Fill in its
+  text and images in place like the rest of the page.
 - On the menu page, the menu switches to the menu editor: add, edit, delete and drag (⠿) to
   reorder sections and items.
 - The admin bar shows save status. Edit mode stays on as you move between pages until you click
@@ -79,9 +85,23 @@ and add it to the `NAV` list in `AdminLayout.jsx`.
   users, and a trigger stops built-in pages from being deleted, unpublished or moved. Content for a
   page is stored in `site_content` under its prefix: `home.` / `menu.` for built-in pages and
   `page-<id>.` for created pages (so renaming a URL never loses content). Created pages render through
-  a template (`template` column; currently `basic`: optional header image, heading, intro, body text),
+  a template (`template` column; currently `basic`: optional header image, heading, intro, then the page's sections),
   in `src/pages/DynamicPage.jsx`. To add a template, add it to `TEMPLATES` in `src/lib/pages.js` and a
   case in `PageTemplate`.
+- **Page sections:** `page_sections` rows (`page_id`, `type`, `settings` JSON, `position`). A
+  section's text and images are stored in `site_content` under `section-<id>.<field>`; a database
+  trigger deletes them when the section (or its page) is deleted. Images stay in Files. Layouts are
+  defined in code:
+  - `src/sections/types.js`: label, description, `settings` (generates the settings menu) and image
+    slots for each layout.
+  - `src/sections/index.js`: maps each type to its component (`TextSection.jsx` etc.). Components get
+    `{ prefix, settings }` and use `EditableText` / `EditableImage` with ids `${prefix}.<field>`.
+  - `src/admin/sections/`: the edit-mode toolbar, settings menu, "Add section" picker and its
+    schematic previews.
+  - Styles: `src/styles/_sections.scss`.
+
+  To add a layout, follow the checklist at the top of `src/sections/types.js`. Created pages show
+  their sections below the header; Home and Menu show them below their built-in content.
 - **Page text:** `site_content` stores text edits as key/value rows. In code, text is wrapped in
   `<EditableText id="home.hero.title" as="h1">Default text</EditableText>`. The children are the default,
   shown until someone saves an edit under that `id`. To make new text editable, wrap it the same way
@@ -136,8 +156,11 @@ src/
     Layout.jsx                 header, nav, footer; lazy-loads the admin bar when logged in
     EditableText.jsx           text that becomes editable in edit mode
     EditableImage.jsx          image; lazy-loads its edit controls in edit mode
+    PageSections.jsx           renders a page's sections; lazy-loads section editing in edit mode
   pages/                       Home, Menu (lazy-loads the menu editor in edit mode),
                                DynamicPage (created pages + templates), NotFound
+  sections/                    page section layouts: types.js (metadata), index.js (components),
+                               TextSection, TextImageSection, ImageSection, TwoImagesSection
   admin/                       all admin UI (MUI)
     theme.js, AdminTheme.jsx   MUI theme and provider (includes ConfirmProvider)
     confirm.js, ConfirmProvider.jsx  useConfirm(): MUI confirm/alert dialogs, type-to-confirm deletes
@@ -150,6 +173,7 @@ src/
     SortableList.jsx           drag & drop lists (menu editor, pages)
     FieldHint.jsx              helper text with a character counter
     menu/                      MenuEditor, SectionForm, ItemForm
+    sections/                  page section toolbar + settings, Add section picker, previews
     dashboard/                 AdminDashboard (routes + auth guard), AdminLayout, SiteSettings,
                                PagesManager, PageSettingsDialog,
                                FileManager, MediaDetails, OptimizePanel

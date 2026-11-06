@@ -1,6 +1,7 @@
 import { useParams } from 'react-router-dom'
 import EditableImage from '../components/EditableImage.jsx'
 import EditableText from '../components/EditableText.jsx'
+import PageSections from '../components/PageSections.jsx'
 import { contentPrefix } from '../lib/pages'
 import { usePageMeta } from '../lib/seo'
 import { useSite } from '../lib/site'
@@ -25,7 +26,7 @@ function PageTemplate({ page }) {
   }
 }
 
-/** Optional hero image, heading and intro, then body text. All editable in place. */
+/** Optional hero image, heading and intro, then the page's sections. All editable in place. */
 function BasicTemplate({ page }) {
   const prefix = contentPrefix(page)
 
@@ -41,9 +42,7 @@ function BasicTemplate({ page }) {
         </div>
       </section>
 
-      <div className="container page page-body">
-        <EditableText id={`${prefix}.body`} as="div" multiline />
-      </div>
+      <PageSections page={page} />
     </>
   )
 }

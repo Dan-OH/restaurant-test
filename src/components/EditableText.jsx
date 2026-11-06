@@ -9,8 +9,16 @@ import { useSite } from '../lib/site'
  * `id` must be unique across the site; it's the key the text is saved under.
  * The children are the default text, shown until someone saves an edit.
  * Set `multiline` to allow line breaks (Enter); otherwise Enter finishes editing.
+ * `placeholder` is shown in edit mode while the field is empty.
  */
-export default function EditableText({ id, as: Tag = 'span', multiline = false, className, children }) {
+export default function EditableText({
+  id,
+  as: Tag = 'span',
+  multiline = false,
+  className,
+  placeholder = 'Click to add text',
+  children,
+}) {
   const { editing, getText, saveText } = useSite()
   const fallback = typeof children === 'string' ? children : ''
   const value = getText(id, fallback)
@@ -25,12 +33,13 @@ export default function EditableText({ id, as: Tag = 'span', multiline = false, 
       className={[classes, 'editable'].filter(Boolean).join(' ')}
       value={value}
       multiline={multiline}
+      placeholder={placeholder}
       onSave={(next) => saveText(id, next).catch(() => {})} // failure shows in the admin bar
     />
   )
 }
 
-function EditingField({ Tag, className, value, multiline, onSave }) {
+function EditingField({ Tag, className, value, multiline, placeholder, onSave }) {
   const ref = useRef(null)
 
   // The DOM owns the text while editing, so React doesn't render children here.
@@ -67,7 +76,7 @@ function EditingField({ Tag, className, value, multiline, onSave }) {
       spellCheck
       role="textbox"
       aria-multiline={multiline || undefined}
-      data-placeholder="Click to add text"
+      data-placeholder={placeholder}
       onBlur={commit}
       onKeyDown={handleKeyDown}
       // Keep clicks from following a surrounding link while editing.

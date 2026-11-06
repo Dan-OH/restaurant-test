@@ -1,13 +1,15 @@
 import { Link } from 'react-router-dom'
 import EditableText from '../components/EditableText.jsx'
 import EditableImage from '../components/EditableImage.jsx'
+import PageSections from '../components/PageSections.jsx'
 import { useSite } from '../lib/site'
 import { usePageMeta } from '../lib/seo'
 import { systemPage } from '../lib/pages'
 
 export default function Home() {
   const { editing, pages } = useSite()
-  usePageMeta(undefined, systemPage(pages, 'home'))
+  const page = systemPage(pages, 'home')
+  usePageMeta(undefined, page)
 
   return (
     <>
@@ -52,6 +54,8 @@ export default function Home() {
           </EditableText>
         </div>
       </section>
+
+      <PageSections page={page} />
     </>
   )
 }

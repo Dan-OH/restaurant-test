@@ -10,6 +10,7 @@ export function SiteProvider({ children }) {
   const [content, setContent] = useState(null)
   const [media, setMedia] = useState(null) // { [id]: row }
   const [pages, setPages] = useState(null) // array, ordered by nav_order
+  const [pageSections, setPageSections] = useState(null) // array, all pages' sections
   const [status, setStatus] = useState('idle')
   const [statusError, setStatusError] = useState(null)
   const pending = useRef(0)
@@ -34,7 +35,8 @@ export function SiteProvider({ children }) {
       })
   }, [])
 
-  // Refetch pages when the user logs in or out: drafts are only visible to logged-in users.
+  // Refetch pages and their sections when the user logs in or out:
+  // drafts are only visible to logged-in users.
   const userId = session?.user?.id
   useEffect(() => {
     api
@@ -43,6 +45,13 @@ export function SiteProvider({ children }) {
       .catch((e) => {
         console.error('Could not load pages, using defaults:', e.message)
         setPages(FALLBACK_PAGES)
+      })
+    api
+      .fetchPageSections()
+      .then(setPageSections)
+      .catch((e) => {
+        console.error('Could not load page sections:', e.message)
+        setPageSections([])
       })
   }, [userId])
 
@@ -153,10 +162,17 @@ export function SiteProvider({ children }) {
     async (page) => {
       const prefix = contentPrefix(page)
       await track(() => api.deletePage(page, prefix))
+      // The database also deletes the page's sections and their content.
+      const sectionPrefixes = (pageSections ?? []).filter((s) => s.page_id === page.id).map((s) => `section-${s.id}.`)
       setPages((list) => list.filter((p) => p.id !== page.id))
-      setContent((c) => Object.fromEntries(Object.entries(c).filter(([k]) => !k.startsWith(`${prefix}.`))))
+      setPageSections((list) => list.filter((s) => s.page_id !== page.id))
+      setContent((c) =>
+        Object.fromEntries(
+          Object.entries(c).filter(([k]) => !k.startsWith(`${prefix}.`) && !sectionPrefixes.some((sp) => k.startsWith(sp))),
+        ),
+      )
     },
-    [track],
+    [track, pageSections],
   )
 
   // Optimistically reorder; on failure, reload the real order and rethrow.
@@ -171,6 +187,80 @@ export function SiteProvider({ children }) {
       }
     },
     [track],
+  )
+
+  // ---- Page sections ----
+
+  // Save a page's section order and mirror it locally.
+  const saveSectionOrder = useCallback(
+    async (ordered) => {
+      const positions = new Map(ordered.map((s, i) => [s.id, i]))
+      setPageSections((list) => list.map((s) => (positions.has(s.id) ? { ...s, position: positions.get(s.id) } : s)))
+      await track(() => api.reorderPageSections(ordered.map((s) => s.id)))
+    },
+    [track],
+  )
+
+  const sectionsFor = useCallback(
+    (pageId) => (pageSections ?? []).filter((s) => s.page_id === pageId).sort((a, b) => a.position - b.position),
+    [pageSections],
+  )
+
+  /** Adds a section of `type` to a page at `index` (0 = top). Returns the new section. */
+  const addPageSection = useCallback(
+    async (pageId, type, index) => {
+      const created = await track(() => api.createPageSection({ page_id: pageId, type, position: index }))
+      const ordered = sectionsFor(pageId)
+      ordered.splice(index, 0, created)
+      setPageSections((list) => [...list, created])
+      await saveSectionOrder(ordered)
+      return created
+    },
+    [track, sectionsFor, saveSectionOrder],
+  )
+
+  // Optimistic, so settings changes (e.g. image left/right) show instantly.
+  const updatePageSection = useCallback(
+    async (id, patch) => {
+      const previous = pageSections.find((s) => s.id === id)
+      setPageSections((list) => list.map((s) => (s.id === id ? { ...s, ...patch } : s)))
+      try {
+        const updated = await track(() => api.updatePageSection(id, patch))
+        setPageSections((list) => list.map((s) => (s.id === id ? updated : s)))
+      } catch (e) {
+        setPageSections((list) => list.map((s) => (s.id === id ? previous : s)))
+        throw e
+      }
+    },
+    [pageSections, track],
+  )
+
+  const removePageSection = useCallback(
+    async (section) => {
+      await track(() => api.deletePageSection(section.id))
+      const prefix = `section-${section.id}.`
+      setPageSections((list) => list.filter((s) => s.id !== section.id))
+      setContent((c) => Object.fromEntries(Object.entries(c).filter(([k]) => !k.startsWith(prefix))))
+    },
+    [track],
+  )
+
+  /** Moves a section up (-1) or down (+1) within its page. */
+  const movePageSection = useCallback(
+    async (section, delta) => {
+      const ordered = sectionsFor(section.page_id)
+      const from = ordered.findIndex((s) => s.id === section.id)
+      const to = from + delta
+      if (from === -1 || to < 0 || to >= ordered.length) return
+      ordered.splice(to, 0, ordered.splice(from, 1)[0])
+      try {
+        await saveSectionOrder(ordered)
+      } catch (e) {
+        api.fetchPageSections().then(setPageSections).catch(() => {})
+        throw e
+      }
+    },
+    [sectionsFor, saveSectionOrder],
   )
 
   const value = useMemo(
@@ -191,6 +281,12 @@ export function SiteProvider({ children }) {
       updatePage,
       removePage,
       reorderPages,
+      pageSections,
+      sectionsFor,
+      addPageSection,
+      updatePageSection,
+      removePageSection,
+      movePageSection,
       track,
       status,
       statusError,
@@ -211,6 +307,12 @@ export function SiteProvider({ children }) {
       updatePage,
       removePage,
       reorderPages,
+      pageSections,
+      sectionsFor,
+      addPageSection,
+      updatePageSection,
+      removePageSection,
+      movePageSection,
       track,
       status,
       statusError,
@@ -218,7 +320,7 @@ export function SiteProvider({ children }) {
   )
 
   // Wait for saved content before rendering so visitors never see defaults flash first.
-  if (content === null || media === null || pages === null) return null
+  if (content === null || media === null || pages === null || pageSections === null) return null
 
   return <SiteContext.Provider value={value}>{children}</SiteContext.Provider>
 }
