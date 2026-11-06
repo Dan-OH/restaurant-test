@@ -14,8 +14,11 @@ import { useSite } from '../../lib/site'
 import { keyFromLabel, replaceToken, tokenFor, validateVariableKey, variableUsageKeys } from '../../lib/variables'
 import { useConfirm } from '../confirm'
 
-/** Create a variable (`variable` omitted) or edit one. Renaming the key updates every use. */
-export default function VariableDialog({ variable, onClose }) {
+/**
+ * Create a variable (`variable` omitted; `initialKey` pre-fills the key) or edit one.
+ * Renaming the key updates every use.
+ */
+export default function VariableDialog({ variable, initialKey, onClose }) {
   const site = useSite()
   const { confirm } = useConfirm()
   const theme = useTheme()
@@ -23,8 +26,8 @@ export default function VariableDialog({ variable, onClose }) {
   const isNew = !variable
 
   const [label, setLabel] = useState(variable?.label ?? '')
-  const [key, setKey] = useState(variable?.key ?? '')
-  const [keyTouched, setKeyTouched] = useState(!isNew)
+  const [key, setKey] = useState(variable?.key ?? initialKey ?? '')
+  const [keyTouched, setKeyTouched] = useState(!isNew || Boolean(initialKey))
   const [value, setValue] = useState(variable?.value ?? '')
   const [description, setDescription] = useState(variable?.description ?? '')
   const [submitted, setSubmitted] = useState(false)

@@ -55,7 +55,7 @@ function Toolbar({ section, index, count }) {
     const name = heading || label
     const ok = await confirm({
       title: 'Delete section?',
-      message: `The "${label}" section${heading ? ` "${heading}"` : ''} and its text will be permanently deleted. Any images it used stay in Files.`,
+      message: `The "${label}" section${heading ? ` "${heading}"` : ''} and its text will be permanently deleted. Any images it used stay in Assets.`,
       confirmText: name,
       confirmLabel: 'Delete section',
       danger: true,

@@ -15,10 +15,10 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy'
 import DataObjectIcon from '@mui/icons-material/DataObject'
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
-import { describePlacement } from '../../lib/media'
 import { usePageMeta } from '../../lib/seo'
 import { useSite } from '../../lib/site'
-import { replaceToken, tokenFor, variableUsageKeys } from '../../lib/variables'
+import { replaceToken, tokenFor } from '../../lib/variables'
+import { variableUsage } from './usage'
 import { useConfirm } from '../confirm'
 import VariableDialog from './VariableDialog.jsx'
 
@@ -32,13 +32,7 @@ export default function VariablesManager() {
   const variables = [...site.variableList].sort((a, b) => a.label.localeCompare(b.label))
   const notSetUp = variables.some((v) => String(v.id).startsWith('fallback-'))
 
-  function usagesOf(variable) {
-    const keys = variableUsageKeys(site.content, variable.key)
-    const pages = [
-      ...new Set(keys.map((k) => describePlacement(k, 0, 1, { pages: site.pages, sections: site.pageSections }).page)),
-    ]
-    return { keys, pages }
-  }
+  const usagesOf = (variable) => variableUsage(site, variable.key)
 
   async function remove(variable) {
     const { keys } = usagesOf(variable)

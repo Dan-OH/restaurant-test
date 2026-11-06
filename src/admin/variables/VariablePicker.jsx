@@ -11,11 +11,14 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { OPEN_VARIABLE_PICKER, caretIn, caretRect, insertChip } from '../../components/editableDom'
 import { useSite } from '../../lib/site'
+import VariableDialog from './VariableDialog.jsx'
 import { tokenFor } from '../../lib/variables'
 
 /**
- * Popup for inserting a site variable into the text field being edited. Opens when "{{" is
- * typed in a field, or from the admin bar's "Insert variable" button. Mounted by AdminBar.
+ * Variable tools for edit mode, mounted by AdminBar:
+ *  - a popup for inserting a variable into the text field being edited. Opens when "{{" is
+ *    typed in a field, or from the admin bar's "Insert variable" button;
+ *  - clicking a variable chip in the page opens its settings (or "New variable" if missing).
  */
 export default function VariablePicker() {
   const { variableList, variables } = useSite()
@@ -25,6 +28,7 @@ export default function VariablePicker() {
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(0)
   const [hint, setHint] = useState(null)
+  const [dialog, setDialog] = useState(null) // { variable } or { initialKey } for a missing one
 
   useEffect(() => {
     function open(e) {
@@ -48,6 +52,19 @@ export default function VariablePicker() {
     window.addEventListener(OPEN_VARIABLE_PICKER, open)
     return () => window.removeEventListener(OPEN_VARIABLE_PICKER, open)
   }, [])
+
+  // Clicking a chip opens that variable's settings.
+  useEffect(() => {
+    function handleClick(e) {
+      const chip = e.target.closest?.('.var-chip')
+      if (!chip) return
+      e.preventDefault()
+      const variable = variables[chip.dataset.var]
+      setDialog(variable ? { variable } : { initialKey: chip.dataset.var })
+    }
+    document.addEventListener('click', handleClick)
+    return () => document.removeEventListener('click', handleClick)
+  }, [variables])
 
   const q = query.trim().toLowerCase()
   const matches = variableList
@@ -164,6 +181,15 @@ export default function VariablePicker() {
           </Link>
         </Box>
       </Popover>
+
+      {dialog && (
+        <VariableDialog
+          key={dialog.variable?.id ?? `new-${dialog.initialKey}`}
+          variable={dialog.variable ?? null}
+          initialKey={dialog.initialKey}
+          onClose={() => setDialog(null)}
+        />
+      )}
 
       <Snackbar
         open={Boolean(hint)}

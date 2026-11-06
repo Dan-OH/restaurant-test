@@ -402,3 +402,55 @@ insert into public.site_content (key, value) values
   ('home.reservations.body', E'Call us at {{phone}}\nWalk-ins always welcome'),
   ('footer.text', '{{restaurant_name}} · {{phone}}')
 on conflict (key) do nothing;
+
+-- ---------------------------------------------------------------------------
+-- Image sources: unique uploaded originals, shared between assets (media rows).
+-- Uploading a file that's already stored (same SHA-256 hash) reuses its source
+-- instead of uploading it again; each upload still gets its own asset with its own
+-- crop, size and alt text. media.original_path mirrors the source's path.
+-- ---------------------------------------------------------------------------
+create table if not exists public.media_sources (
+  id         uuid primary key default gen_random_uuid(),
+  hash       text unique,          -- SHA-256 of the uploaded file; null for files from before this existed
+  path       text not null unique, -- storage path of the original
+  width      integer,
+  height     integer,
+  size       integer,
+  mime_type  text,
+  created_at timestamptz not null default now()
+);
+
+alter table public.media_sources enable row level security;
+
+-- Only the editor needs sources; visitors only ever load the optimized files.
+drop policy if exists "Authenticated manage media sources" on public.media_sources;
+create policy "Authenticated manage media sources" on public.media_sources
+  for all to authenticated using (true) with check (true);
+
+alter table public.media
+  add column if not exists source_id uuid references public.media_sources(id) on delete set null;
+
+-- Register a source for every existing asset (its original, or the file itself for older
+-- images that never had a separate original). Safe to re-run.
+do $$
+declare
+  r record;
+  sid uuid;
+begin
+  for r in
+    select id, coalesce(original_path, path) as source_path, original_width, original_height, original_size
+      from public.media
+     where source_id is null
+  loop
+    insert into public.media_sources (path, width, height, size, mime_type)
+    values (
+      r.source_path, r.original_width, r.original_height, r.original_size,
+      (select metadata->>'mimetype' from storage.objects where bucket_id = 'site-images' and name = r.source_path)
+    )
+    on conflict (path) do update set path = excluded.path
+    returning id into sid;
+
+    update public.media set source_id = sid, original_path = r.source_path where id = r.id;
+  end loop;
+end
+$$;

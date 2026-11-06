@@ -23,7 +23,7 @@ import { BAR_COLOR } from '../theme'
 const NAV = [
   { to: '/admin', label: 'Site settings', icon: <TuneOutlinedIcon />, end: true },
   { to: '/admin/pages', label: 'Pages', icon: <ArticleOutlinedIcon /> },
-  { to: '/admin/files', label: 'Files', icon: <PhotoLibraryOutlinedIcon /> },
+  { to: '/admin/assets', label: 'Assets', icon: <PhotoLibraryOutlinedIcon /> },
   { to: '/admin/variables', label: 'Variables', icon: <DataObjectIcon /> },
 ]
 

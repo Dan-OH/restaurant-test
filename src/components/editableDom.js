@@ -19,9 +19,7 @@ export function createChip(key, variables) {
   chip.setAttribute('contenteditable', 'false')
   chip.dataset.var = key
   chip.textContent = variable ? variable.value || '(empty)' : `Missing: ${key}`
-  chip.title = variable
-    ? `Variable: ${variable.label} ({{${key}}}). Change its value in Dashboard → Variables.`
-    : `No variable called "${key}". Create it in Dashboard → Variables or delete this.`
+  // Details show in an MUI tooltip on hover (src/admin/variables/VariableTooltip.jsx).
   return chip
 }
 

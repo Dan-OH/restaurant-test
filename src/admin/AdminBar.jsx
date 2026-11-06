@@ -25,6 +25,7 @@ import { findPageByPath, pagePath } from '../lib/pages'
 import AdminTheme from './AdminTheme.jsx'
 import { BAR_COLOR, BAR_EDITING_COLOR } from './theme'
 import VariablePicker from './variables/VariablePicker.jsx'
+import VariableTooltip from './variables/VariableTooltip.jsx'
 
 // Loaded the first time "Page settings" is clicked.
 const PageSettingsDialog = lazy(() => import('./dashboard/PageSettingsDialog.jsx'))
@@ -121,6 +122,7 @@ export default function AdminBar() {
       </AppBar>
 
       {editing && <VariablePicker />}
+      {editing && <VariableTooltip />}
 
       {settingsOpen && currentPage && (
         <Suspense fallback={null}>

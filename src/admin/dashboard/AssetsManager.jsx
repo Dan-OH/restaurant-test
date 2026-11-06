@@ -90,13 +90,13 @@ function groupItems(items, grouping) {
   return [...groups.values()].sort((a, b) => a.order - b.order || a.title.localeCompare(b.title))
 }
 
-export default function FileManager() {
-  usePageMeta('Files')
+export default function AssetsManager() {
+  usePageMeta('Assets')
   const { media, content, pages, pageSections } = useSite()
   const [filter, setFilter] = useState('all')
   const [search, setSearch] = useState('')
-  const [sort, setSort] = usePersistentState('files.sort', 'newest', Object.keys(SORTS))
-  const [grouping, setGrouping] = usePersistentState('files.grouping', 'page', Object.keys(GROUPINGS))
+  const [sort, setSort] = usePersistentState('assets.sort', 'newest', Object.keys(SORTS))
+  const [grouping, setGrouping] = usePersistentState('assets.grouping', 'page', Object.keys(GROUPINGS))
   const [collapsed, setCollapsed] = useState(() => new Set())
   const [params, setParams] = useSearchParams()
   const openId = params.get('image')
@@ -142,7 +142,7 @@ export default function FileManager() {
   return (
     <Box sx={{ maxWidth: 1200 }}>
       <Typography variant="h4" component="h1" gutterBottom>
-        Files
+        Assets
       </Typography>
       <Typography sx={{ color: 'text.secondary' }}>
         {items.length === 0

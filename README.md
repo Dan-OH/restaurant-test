@@ -19,10 +19,11 @@ edit mode:
 - The homepage hero image has a panel in its top-right corner. **Add / Replace** (click or drag and
   drop a file) opens a crop & resize dialog: drag to position, zoom, pick a shape (21:9, 16:9, 3:2 or
   the original), and pick an output size. **Crop & resize** reopens the dialog with the previous crop
-  restored. You can also set alt text, or **Remove** the image from the page (it stays in Files).
+  restored. You can also set alt text, or **Remove** the image from the page (it stays in Assets).
 - **Variables:** while editing text, type `{{` (or click **Insert variable** in the admin bar) to
   insert a site variable such as the address or phone number. It shows as a tinted chip in edit mode
-  and as plain text to visitors, and always displays the variable's current value.
+  and as plain text to visitors, and always displays the variable's current value. Hover a chip for
+  its details (value, description, where it's used, last updated); click it to edit the variable.
 - **Page sections:** every page can have sections, which are blocks built from layouts defined in
   `src/sections/`. In edit mode, **Add section** (between sections, or the box at the bottom) opens a
   layout picker: Text, Text with image, Image, Two images. Each section has a toolbar to move it
@@ -40,11 +41,11 @@ The admin bar also links to the **Dashboard** (`/admin`), where site-wide settin
   **New page** asks for a title (the URL is generated from it), a template, and whether to show it in
   the navigation; pages start as drafts. Each page has **Edit content** (opens it in edit mode),
   **settings** (title, URL, navigation label, show in navigation, published/draft, SEO title and
-  description) and **delete** (type the title to confirm; its images stay in Files). Built-in pages
+  description) and **delete** (type the title to confirm; its images stay in Assets). Built-in pages
   can be renamed, hidden from navigation and given SEO text, but not deleted, unpublished or moved.
   On the site, the admin bar shows **Page settings** for the current page and a **Draft** badge on
   unpublished pages, which visitors can't see.
-- **Files:** every uploaded image, with where it's used (page chips; links to each page), size and
+- **Assets:** every uploaded image, with where it's used (page chips; links to each page), size and
   format, and warnings for missing alt text. Search; sort by date, name, file size, dimensions or
   usage; group by page or by feature (hero images, slideshows…); filter by in use / not used / missing
   alt text. Sort and grouping choices are remembered in your browser. Open an
@@ -103,7 +104,7 @@ and add it to the `NAV` list in `AdminLayout.jsx`.
   the header, footer and homepage text unless those were already edited. Helpers: `src/lib/variables.js`.
 - **Page sections:** `page_sections` rows (`page_id`, `type`, `settings` JSON, `position`). A
   section's text and images are stored in `site_content` under `section-<id>.<field>`; a database
-  trigger deletes them when the section (or its page) is deleted. Images stay in Files. Layouts are
+  trigger deletes them when the section (or its page) is deleted. Images stay in Assets. Layouts are
   defined in code:
   - `src/sections/types.js`: label, description, `settings` (generates the settings menu) and image
     slots for each layout.
@@ -122,10 +123,15 @@ and add it to the `NAV` list in `AdminLayout.jsx`.
 - **Images:** a media library. Each image is a row in the `media` table: the file visitors see
   (`path`), the uncropped original (`original_path`, max 3200px), the `settings` used to render one
   from the other (`{ aspect, area, width, format, quality }`), alt text, dimensions and file sizes.
-  Files are stored in the public `site-images` Supabase Storage bucket (10 MB limit, images only).
+  Image files are stored in the public `site-images` Supabase Storage bucket (10 MB limit, images only).
   Cropping and optimizing always re-render from the original, so repeated edits never lose quality.
   Placements on the page (`<EditableImage id="home.hero.image" ...>`) store a media id in
-  `site_content`, so an edit in Files updates every page using that image.
+  `site_content`, so an edit in Assets updates every page using that image.
+- **Duplicate uploads:** originals are shared through the `media_sources` table, keyed by a SHA-256
+  hash of the uploaded file. Uploading an image that's already stored reuses that original (no second
+  upload) but still creates a new asset with its own crop, size and alt text, so the same photo can
+  be cropped differently on different pages. Deleting an asset only deletes the shared original once
+  no other asset uses it. Rendered (cropped/optimized) files are per asset.
 - **Image placement names:** `<page>.<feature>.<name>`, e.g. `home.hero.image`. The file manager
   reads the page and feature from the name to show "Used on" and to group images. A placement's value
   is one media id, or a JSON array of ids for features with several images: a future slideshow saved
@@ -180,8 +186,8 @@ src/
     confirm.js, ConfirmProvider.jsx  useConfirm(): MUI confirm/alert dialogs, type-to-confirm deletes
     AdminBar.jsx               sticky logged-in bar with the edit-mode toggle
     ImageControls.jsx          upload/crop/replace/remove panel for EditableImage
-    mediaOps.js                create / re-render / delete media (shared by editor and Files)
-    usePersistentState.js      remembers view preferences (e.g. Files sort) in localStorage
+    mediaOps.js                create / re-render / delete media (shared by editor and Assets)
+    usePersistentState.js      remembers view preferences (e.g. Assets sort) in localStorage
     ImageCropper.jsx           crop & resize dialog (react-easy-crop)
     Login.jsx                  staff login page
     SortableList.jsx           drag & drop lists (menu editor, pages)
@@ -191,7 +197,7 @@ src/
     variables/                 Variables dashboard page, variable dialog, insert-variable picker
     dashboard/                 AdminDashboard (routes + auth guard), AdminLayout, SiteSettings,
                                PagesManager, PageSettingsDialog,
-                               FileManager, MediaDetails, OptimizePanel
+                               AssetsManager, MediaDetails, OptimizePanel
   lib/
     supabase.js                Supabase client
     api.js                     all database and storage calls

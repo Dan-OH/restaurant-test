@@ -5,7 +5,7 @@ import { useAuth } from '../../lib/useAuth'
 import AdminTheme from '../AdminTheme.jsx'
 import AdminLayout from './AdminLayout.jsx'
 import SiteSettings from './SiteSettings.jsx'
-import FileManager from './FileManager.jsx'
+import AssetsManager from './AssetsManager.jsx'
 import PagesManager from './PagesManager.jsx'
 import VariablesManager from '../variables/VariablesManager.jsx'
 
@@ -21,7 +21,9 @@ export default function AdminDashboard() {
           <Route element={<AdminLayout />}>
             <Route index element={<SiteSettings />} />
             <Route path="pages" element={<PagesManager />} />
-            <Route path="files" element={<FileManager />} />
+            <Route path="assets" element={<AssetsManager />} />
+            {/* Old address for Assets, kept so existing links still work. */}
+            <Route path="files" element={<RedirectTo path="/admin/assets" />} />
             <Route path="variables" element={<VariablesManager />} />
             <Route path="*" element={<Navigate to="/admin" replace />} />
           </Route>
@@ -29,6 +31,12 @@ export default function AdminDashboard() {
       </RequireAuth>
     </AdminTheme>
   )
+}
+
+// Redirects while keeping the query string (e.g. ?image=…).
+function RedirectTo({ path }) {
+  const { search } = useLocation()
+  return <Navigate to={`${path}${search}`} replace />
 }
 
 function RequireAuth({ children }) {

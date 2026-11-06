@@ -53,7 +53,8 @@ div.editable:empty {
   border-radius: 0.5em;
   background: color-mix(in srgb, #2e5e4e 14%, transparent);
   white-space: pre-line;
-  cursor: default;
+  cursor: pointer; // click to open the variable's settings
+  transition: background-color 0.15s;
   -webkit-box-decoration-break: clone;
   box-decoration-break: clone; // keep the pill shape when a long value wraps
 
@@ -64,6 +65,10 @@ div.editable:empty {
     font-weight: 700;
     opacity: 0.6;
     vertical-align: 0.1em;
+  }
+
+  &:hover {
+    background: color-mix(in srgb, #2e5e4e 26%, transparent);
   }
 
   &.is-missing {

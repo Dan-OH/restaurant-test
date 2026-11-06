@@ -232,3 +232,17 @@ export async function updateVariable(id, patch) {
 export async function deleteVariable(id) {
   check(await supabase.from('site_variables').delete().eq('id', id))
 }
+
+// ---- Image sources (shared originals, deduplicated by hash) ----
+
+export async function findMediaSource(hash) {
+  return check(await supabase.from('media_sources').select('*').eq('hash', hash).maybeSingle())
+}
+
+export async function createMediaSource(row) {
+  return check(await supabase.from('media_sources').insert(row).select().single())
+}
+
+export async function deleteMediaSource(id) {
+  check(await supabase.from('media_sources').delete().eq('id', id))
+}

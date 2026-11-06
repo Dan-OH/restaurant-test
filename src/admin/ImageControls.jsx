@@ -11,7 +11,7 @@ import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate'
 import CropIcon from '@mui/icons-material/Crop'
 import LinkOffIcon from '@mui/icons-material/LinkOff'
 import { useSite } from '../lib/site'
-import { prepareImage } from '../lib/images'
+import { hashFile, prepareImage } from '../lib/images'
 import AdminTheme from './AdminTheme.jsx'
 import ImageCropper from './ImageCropper.jsx'
 import { useConfirm } from './confirm'
@@ -21,7 +21,7 @@ const MAX_BYTES = 10 * 1024 * 1024
 
 /**
  * Edit-mode panel for an EditableImage placement: upload (with crop), re-crop, alt text,
- * and remove from this placement. Images live in the media library (dashboard → Files).
+ * and remove from this placement. Images live in the media library (dashboard → Assets).
  */
 export default function ImageControls(props) {
   return (
@@ -57,10 +57,12 @@ function Controls({ id, folder, label, media, cropperProps }) {
     setError(null)
     setBusy(true)
     try {
+      // Fingerprint the file as chosen, so re-uploading the same image reuses the stored original.
+      const hash = await hashFile(file)
       // Shrink huge photos up front so cropping is smooth and the stored original is reasonable.
       const prepared = await prepareImage(file, { maxWidth: 3200, quality: 0.9 })
       if (prepared.size > MAX_BYTES) throw new Error('That image is too large (max 10 MB).')
-      setSession({ src: URL.createObjectURL(prepared), file: prepared, name: file.name, initial: null })
+      setSession({ src: URL.createObjectURL(prepared), file: prepared, hash, name: file.name, initial: null })
     } catch (e) {
       setError(e.message)
     } finally {
@@ -81,6 +83,7 @@ function Controls({ id, folder, label, media, cropperProps }) {
         const created = await createMediaFromFile(site, {
           file: session.file,
           src: session.src,
+          hash: session.hash,
           settings,
           folder,
           name: session.name,
@@ -100,7 +103,7 @@ function Controls({ id, folder, label, media, cropperProps }) {
   async function handleRemove() {
     const ok = await confirm({
       title: `Remove the ${label}?`,
-      message: 'It will be removed from this page but stays in Files, so you can use it again or delete it there.',
+      message: 'It will be removed from this page but stays in Assets, so you can use it again or delete it there.',
       confirmLabel: 'Remove',
     })
     if (!ok) return
@@ -198,8 +201,8 @@ function Controls({ id, folder, label, media, cropperProps }) {
             />
           )}
           {media ? (
-            <Link component={RouterLink} to={`/admin/files?image=${media.id}`} variant="caption">
-              Optimize or see where it's used in Files
+            <Link component={RouterLink} to={`/admin/assets?image=${media.id}`} variant="caption">
+              Optimize or see where it's used in Assets
             </Link>
           ) : (
             !busy && (

@@ -94,3 +94,9 @@ export function canEncode(type) {
   }
   return encodeSupport[type]
 }
+
+/** SHA-256 of a file's bytes as hex, used to recognise the same image uploaded twice. */
+export async function hashFile(file) {
+  const digest = await crypto.subtle.digest('SHA-256', await file.arrayBuffer())
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('')
+}

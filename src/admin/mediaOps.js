@@ -1,4 +1,4 @@
-import { deleteImage, imageUrl, uploadImage } from '../lib/api'
+import { createMediaSource, deleteImage, deleteMediaSource, findMediaSource, imageUrl, uploadImage } from '../lib/api'
 import { measureImage, renderImage } from '../lib/images'
 import { findUsages, removeFromPlacement } from '../lib/media'
 
@@ -9,6 +9,10 @@ import { findUsages, removeFromPlacement } from '../lib/media'
  * A media row's `settings` ({ aspect, area, width, format, quality }) describe how `path`
  * was rendered from `original_path`. Changing crop or optimization re-renders from the
  * original, so quality never degrades over repeated edits.
+ *
+ * Originals are shared: each is a row in media_sources, identified by a hash of the uploaded
+ * file. Uploading the same file again reuses the stored original (no second upload) while still
+ * creating a separate asset with its own crop and settings.
  */
 
 export const DEFAULT_OUTPUT = { format: 'image/webp', quality: 0.85, width: 2400 }
@@ -30,36 +34,71 @@ export function mediaSettings(media) {
 }
 
 /**
- * Uploads a new image: stores the original, renders it with `settings`, and adds a media row.
- * `src` is a URL for `file` (e.g. an object URL). Returns the created row.
+ * Finds the stored original for `hash`, or uploads `file` as a new one.
+ * Returns { source, created } where `created` says whether this call uploaded it.
  */
-export async function createMediaFromFile(site, { file, src, settings, folder, name }) {
-  const uploaded = []
-  try {
-    const full = { ...DEFAULT_OUTPUT, ...settings }
-    const original = await measureImage(src)
-    const originalPath = await site.track(() => uploadImage(file, `${folder}/originals`))
-    uploaded.push(originalPath)
+async function getOrCreateSource(site, { file, src, hash, folder }) {
+  if (hash) {
+    const existing = await findMediaSource(hash)
+    if (existing) return { source: existing, created: false }
+  }
 
+  const dims = await measureImage(src)
+  const path = await site.track(() => uploadImage(file, `${folder}/originals`))
+  try {
+    const source = await createMediaSource({
+      hash: hash || null,
+      path,
+      width: dims.width,
+      height: dims.height,
+      size: file.size,
+      mime_type: file.type,
+    })
+    return { source, created: true }
+  } catch (e) {
+    deleteImage(path).catch(() => {})
+    // Someone else stored the same file at the same moment: use theirs.
+    if (e.code === '23505' && hash) {
+      const existing = await findMediaSource(hash)
+      if (existing) return { source: existing, created: false }
+    }
+    throw e
+  }
+}
+
+/**
+ * Creates a new asset from an uploaded file: reuses or stores its original, renders it with
+ * `settings`, and adds a media row. `src` is a URL for `file` (e.g. an object URL); `hash`
+ * identifies the uploaded file (see hashFile). Returns the created row.
+ */
+export async function createMediaFromFile(site, { file, src, hash, settings, folder, name }) {
+  const full = { ...DEFAULT_OUTPUT, ...settings }
+  const { source, created } = await getOrCreateSource(site, { file, src, hash, folder })
+  let renderedPath = null
+  try {
     const rendered = await renderImage(src, full)
-    const path = await site.track(() => uploadImage(rendered.file, folder))
-    uploaded.push(path)
+    renderedPath = await site.track(() => uploadImage(rendered.file, folder))
 
     return await site.addMedia({
       name: name || file.name || 'image',
-      path,
-      original_path: originalPath,
+      path: renderedPath,
+      original_path: source.path,
+      source_id: source.id,
       settings: full,
       width: rendered.width,
       height: rendered.height,
       size: rendered.file.size,
       mime_type: rendered.file.type,
-      original_width: original.width,
-      original_height: original.height,
-      original_size: file.size,
+      original_width: source.width,
+      original_height: source.height,
+      original_size: source.size,
     })
   } catch (e) {
-    for (const p of uploaded) deleteImage(p).catch(() => {})
+    if (renderedPath) deleteImage(renderedPath).catch(() => {})
+    if (created) {
+      deleteMediaSource(source.id).catch(() => {})
+      deleteImage(source.path).catch(() => {})
+    }
     throw e
   }
 }
@@ -84,12 +123,11 @@ export async function rerenderMedia(site, media, settings, rendered) {
     size: result.file.size,
     mime_type: result.file.type,
   }
-  if (!media.original_path) {
-    patch.original_size = media.size
-    if (!media.original_width) {
-      const dims = await measureImage(sourceUrl(media)).catch(() => null)
-      if (dims) Object.assign(patch, { original_width: dims.width, original_height: dims.height })
-    }
+  if (!media.original_path) patch.original_size = media.size
+  // Older assets may not know their original's dimensions yet.
+  if (!media.original_width) {
+    const dims = await measureImage(sourceUrl(media)).catch(() => null)
+    if (dims) Object.assign(patch, { original_width: dims.width, original_height: dims.height })
   }
 
   try {
@@ -112,8 +150,20 @@ export async function deleteMediaEverywhere(site, media) {
     )
   }
   await site.removeMedia(media.id)
-  for (const p of new Set([media.path, media.original_path])) {
-    if (p) deleteImage(p).catch(() => {})
+
+  // The asset's own optimized file (older assets may use their original directly).
+  if (media.path !== media.original_path) deleteImage(media.path).catch(() => {})
+
+  // The original is shared: only delete it when no other asset still uses it.
+  const original = media.original_path || media.path
+  const stillUsed = Object.values(site.media).some(
+    (m) =>
+      m.id !== media.id &&
+      ((media.source_id && m.source_id === media.source_id) || (m.original_path || m.path) === original),
+  )
+  if (!stillUsed) {
+    if (media.source_id) deleteMediaSource(media.source_id).catch(() => {})
+    deleteImage(original).catch(() => {})
   }
 }
 

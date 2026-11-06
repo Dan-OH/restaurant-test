@@ -51,7 +51,7 @@ export default function PagesManager() {
   async function remove(page) {
     const ok = await confirm({
       title: 'Delete page?',
-      message: `"${page.title}" (${pagePath(page)}) and all of its text will be permanently deleted, and it will be removed from the navigation. Images it used stay in Files.`,
+      message: `"${page.title}" (${pagePath(page)}) and all of its text will be permanently deleted, and it will be removed from the navigation. Images it used stay in Assets.`,
       confirmText: page.title,
       confirmLabel: 'Delete page',
       danger: true,
