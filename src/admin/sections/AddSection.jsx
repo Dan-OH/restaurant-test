@@ -50,38 +50,53 @@ function AddSectionControl({ page, index, variant }) {
           </Button>
         </Box>
       ) : (
-        // Slim divider; becomes more visible on hover/focus so it doesn't clutter the page.
-        <Box
-          sx={{
-            position: 'relative',
-            height: 0,
-            zIndex: 2,
-            '&:hover .add-line, &:focus-within .add-line': { opacity: 1 },
-            '&:hover .add-btn, &:focus-within .add-btn': { opacity: 1 },
-          }}
-        >
+        // Slim divider between sections. It takes no space in the layout; a thin hover strip
+        // straddles the boundary so the line and button light up together as you approach.
+        <Box sx={{ position: 'relative', height: 0, zIndex: 2 }}>
           <Box
-            className="add-line"
             sx={{
               position: 'absolute',
               left: 0,
               right: 0,
-              top: 0,
-              borderTop: 2,
-              borderColor: 'primary.main',
-              borderStyle: 'dashed',
-              opacity: 0,
-              transition: 'opacity 0.15s',
+              top: -16,
+              height: 32,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              '&::before': {
+                content: '""',
+                position: 'absolute',
+                left: 0,
+                right: 0,
+                top: '50%',
+                borderTop: '2px dashed',
+                borderColor: 'primary.main',
+                opacity: 0,
+                transition: 'opacity 0.15s',
+              },
+              '&:hover::before, &:focus-within::before': { opacity: 0.6 },
+              '&:hover .add-btn, &:focus-within .add-btn': {
+                bgcolor: 'primary.main',
+                color: 'primary.contrastText',
+                borderColor: 'primary.main',
+                boxShadow: 3,
+              },
             }}
-          />
-          <Box sx={{ position: 'absolute', left: '50%', top: 0, transform: 'translate(-50%, -50%)' }}>
+          >
             <Button
               className="add-btn"
               size="small"
-              variant="contained"
+              variant="outlined"
               startIcon={<AddIcon />}
               onClick={() => setOpen(true)}
-              sx={{ opacity: 0.55, transition: 'opacity 0.15s', borderRadius: 999, boxShadow: 2 }}
+              sx={{
+                position: 'relative', // above the dashed line
+                borderRadius: 999,
+                px: 1.75,
+                bgcolor: 'background.paper',
+                boxShadow: 1,
+                transition: 'background-color 0.15s, color 0.15s, box-shadow 0.15s',
+              }}
             >
               Add section
             </Button>
