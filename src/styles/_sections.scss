@@ -63,8 +63,7 @@
 }
 
 figure {
-  &.section-image,
-  .section-two-images & {
+  &.section-image {
     margin-top: 0;
     margin-bottom: 0;
   }
@@ -78,49 +77,41 @@ figure {
 }
 
 // --- Text ---
+// Width options (settings.width). Each is a centred column with the page's side padding.
 .section-text {
-  > * {
-    max-width: 720px;
+  margin: 0 auto;
+  padding: 0 1rem;
+
+  &.width-narrow {
+    max-width: 640px;
   }
 
-  &.align-center {
-    text-align: center;
+  &.width-medium {
+    max-width: 800px;
+  }
 
-    > * {
-      margin-left: auto;
-      margin-right: auto;
+  &.width-wide {
+    max-width: $container-width;
+  }
+
+  &.width-full {
+    max-width: none;
+    padding: 0 2rem;
+
+    @include small-screen {
+      padding: 0 1rem;
     }
   }
-}
 
-// --- Text with image ---
-.section-text-image {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2.5rem;
-  align-items: center;
+  // Two columns: the heading stays full width above them; they stack on small screens.
+  .section-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2.5rem;
 
-  &.image-left .section-media {
-    order: -1;
-  }
-
-  &.image-right .section-media {
-    order: 1;
-  }
-
-  // No image (visitors only see this): let the text use the full width.
-  &:not(:has(.section-img)):not(:has(.image-placeholder)) {
-    grid-template-columns: 1fr;
-  }
-
-  @include small-screen {
-    grid-template-columns: 1fr;
-    gap: 1.5rem;
-
-    // Image first on phones, whichever side it's on.
-    &.image-left .section-media,
-    &.image-right .section-media {
-      order: -1;
+    @include small-screen {
+      grid-template-columns: 1fr;
+      gap: 0;
     }
   }
 }
@@ -141,15 +132,4 @@ figure {
     }
   }
 
-}
-
-// --- Two images ---
-.section-two-images {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.5rem;
-
-  @include small-screen {
-    grid-template-columns: 1fr;
-  }
 }

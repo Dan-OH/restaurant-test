@@ -34,10 +34,6 @@
   }
 }
 
-.hero .editable:focus {
-  outline-color: #fff;
-}
-
 // Empty block-level fields (e.g. page body) get a full-width area to click into.
 div.editable:empty {
   display: block;
@@ -45,7 +41,7 @@ div.editable:empty {
 }
 
 // A site variable inside text being edited (see components/editableDom.js). Uses the
-// surrounding text color so it reads well on light and dark backgrounds (e.g. the hero).
+// surrounding text color so it reads well on light and dark backgrounds.
 .var-chip {
   display: inline;
   padding: 0.05em 0.45em;

@@ -50,13 +50,12 @@ function Toolbar({ section, index, count }) {
   }
 
   async function handleDelete() {
-    // Use the section's heading as its name if it has one; otherwise its layout name.
+    // A plain confirm (no typing the name): sections are quick to rebuild, but deleting
+    // still shouldn't be a single click.
     const heading = site.getText(`${sectionPrefix(section)}.heading`, '').trim()
-    const name = heading || label
     const ok = await confirm({
       title: 'Delete section?',
       message: `The "${label}" section${heading ? ` "${heading}"` : ''} and its text will be permanently deleted. Any images it used stay in Assets.`,
-      confirmText: name,
       confirmLabel: 'Delete section',
       danger: true,
     })
@@ -183,7 +182,7 @@ function SectionSettings({ section, type, onError }) {
       })}
       <Typography variant="caption" sx={{ color: 'text.secondary', maxWidth: 280 }}>
         Changes are saved automatically.
-        {type.settings.some((t) => t.key === 'size' || t.key === 'imageSize') &&
+        {type.settings.some((t) => t.key === 'size') &&
           ' After changing the image size, use Edit image → Crop to fit on images already added.'}
       </Typography>
     </Stack>

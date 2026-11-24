@@ -10,14 +10,14 @@ const ImageControls = lazyWithReload(() => import('../admin/ImageControls.jsx'))
 /**
  * An image placement that can be uploaded, cropped and replaced in edit mode.
  *
- *   <EditableImage id="home.hero.image" folder="hero" className="hero-image" />
+ *   <EditableImage id="section-<id>.image" folder="sections" className="section-img" />
  *
  * `id` is the placement key (saved in site_content) and holds a media library id.
- * Start it with the page name ("home.", "menu.") so the file manager can show where it's used.
+ * Start it with the page or section prefix ("menu.", "section-<id>.") so the file manager can show where it's used.
  * Renders nothing outside edit mode when no image is set. The parent should be
  * position: relative; the edit controls sit in its top-right corner.
- * `size` ({ width, height }) is the size this spot needs, set by the template or section
- * (e.g. the hero is 1920×720). Images are cropped to that shape and scaled to that width.
+ * `size` ({ width, height }) is the size this spot needs, set by the section
+ * (e.g. an image section set to 16:9 is 1920×1080). Images are cropped to that shape and scaled to that width.
  * Set `placeholder` to show an empty image box in edit mode until an image is added
  * (for layouts where the image takes up space, like page sections).
  */

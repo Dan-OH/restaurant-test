@@ -8,7 +8,7 @@ import { findUsages, removeFromPlacement } from '../lib/media'
  *
  * A media row's `settings` describe how `path` was rendered from `original_path`:
  *   target   { width, height } the size the image is for, dictated by where it's used
- *            (e.g. the hero is 1920×720). The crop is locked to this shape and the output is
+ *            (e.g. a 16:9 image section is 1920×1080). The crop is locked to this shape and the output is
  *            never wider than target.width.
  *   area     the crop, in pixels of the original
  *   format, quality   encoding (chosen in Optimize)

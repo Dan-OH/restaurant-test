@@ -65,9 +65,3 @@
     text-underline-offset: 2px;
   }
 }
-
-// Text on dark backgrounds (e.g. the hero) keeps its own colors.
-.hero .rich-text a,
-.hero .rich-text blockquote {
-  color: inherit;
-}

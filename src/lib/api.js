@@ -97,7 +97,7 @@ export async function fetchContent() {
   return Object.fromEntries(rows.map((r) => [r.key, r.value]))
 }
 
-/** Saves one or more keys in a single request: saveContent({ 'home.hero.title': 'Hi' }) */
+/** Saves one or more keys in a single request: saveContent({ 'menu.title': 'Menu' }) */
 export async function saveContent(entries) {
   const updated_at = new Date().toISOString()
   const rows = Object.entries(entries).map(([key, value]) => ({ key, value, updated_at }))

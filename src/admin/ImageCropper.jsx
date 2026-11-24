@@ -19,7 +19,7 @@ import { formatSize, outputSize } from '../lib/images'
 /**
  * Dialog for cropping an image to the size its spot needs.
  *
- * `target` ({ width, height }) comes from where the image is used (e.g. the hero is 1920×720,
+ * `target` ({ width, height }) comes from where the image is used (e.g. a 16:9 image section is 1920×1080,
  * section images follow the section's size setting). The crop is locked to that shape and the
  * result is scaled down to the target width; smaller images are allowed, with a warning.
  * Without a target (older images) the crop keeps the image's own shape.

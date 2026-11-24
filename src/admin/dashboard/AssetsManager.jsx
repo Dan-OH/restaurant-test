@@ -356,8 +356,8 @@ function EmptyLibrary() {
         No images yet
       </Typography>
       <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-        Upload images from the page editor: open the site, click <strong>Edit page</strong>, then use the image
-        controls (for example on the homepage hero).
+        Upload images from the page editor: open the site, click <strong>Edit page</strong>, then add an Image
+        section to a page and upload from there.
       </Typography>
     </Paper>
   )

@@ -23,8 +23,8 @@ import OptimizePanel from './dashboard/OptimizePanel.jsx'
  * optimization. Shared by the Assets page's detail dialog and the page editor's image dialog,
  * so both work the same way. Render inside a DialogContent; use key={media.id}.
  *
- * Cropping keeps the size the asset was made for (settings.target, e.g. 1920×720 for the
- * hero); fitting an image to a different spot is done from the page editor's image dialog.
+ * Cropping keeps the size the asset was made for (settings.target, e.g. 1920×1080 for a
+ * 16:9 image section); fitting an image to a different spot is done from the page editor's image dialog.
  * `onBusyChange(busy)` lets the surrounding dialog block closing while something saves.
  */
 export default function AssetEditor({ media, onBusyChange }) {

@@ -20,56 +20,40 @@
 
 // Size choices for section images, as "WIDTHxHEIGHT" values.
 const sizeOption = (width, height, name) => ({ value: `${width}x${height}`, label: `${name} · ${width}×${height}` })
+
 export const SECTION_TYPES = {
   text: {
     label: 'Text',
-    description: 'A heading and a block of text.',
+    description: 'An optional heading and text, in one or two columns.',
     settings: [
       {
-        key: 'align',
-        label: 'Text alignment',
+        key: 'width',
+        label: 'Width',
         type: 'choice',
-        default: 'left',
+        default: 'medium',
         options: [
-          { value: 'left', label: 'Left' },
-          { value: 'center', label: 'Center' },
+          { value: 'narrow', label: 'Narrow' },
+          { value: 'medium', label: 'Medium' },
+          { value: 'wide', label: 'Wide' },
+          { value: 'full', label: 'Full width' },
+        ],
+      },
+      {
+        key: 'columns',
+        label: 'Columns',
+        type: 'choice',
+        default: '1',
+        options: [
+          { value: '1', label: '1 column' },
+          { value: '2', label: '2 columns' },
         ],
       },
     ],
     images: {},
   },
-  textImage: {
-    label: 'Text with image',
-    description: 'Text beside an image. Choose which side the image goes on.',
-    settings: [
-      {
-        key: 'imageSize',
-        label: 'Image size',
-        type: 'choice',
-        default: '1200x900',
-        options: [
-          sizeOption(1200, 900, 'Standard 4:3'),
-          sizeOption(1200, 800, 'Landscape 3:2'),
-          sizeOption(1200, 1200, 'Square'),
-          sizeOption(960, 1200, 'Portrait 4:5'),
-        ],
-      },
-      {
-        key: 'imagePosition',
-        label: 'Image position',
-        type: 'choice',
-        default: 'right',
-        options: [
-          { value: 'left', label: 'Left' },
-          { value: 'right', label: 'Right' },
-        ],
-      },
-    ],
-    images: { image: 'Image' },
-  },
   image: {
     label: 'Image',
-    description: 'One large image with an optional caption.',
+    description: 'One image, cropped to the size you choose, with an optional caption.',
     settings: [
       {
         key: 'size',
@@ -79,8 +63,10 @@ export const SECTION_TYPES = {
         options: [
           sizeOption(1920, 1080, 'Widescreen 16:9'),
           sizeOption(1920, 820, 'Panorama 21:9'),
+          sizeOption(1800, 1200, 'Landscape 3:2'),
           sizeOption(1600, 1200, 'Standard 4:3'),
-          sizeOption(1400, 1400, 'Square'),
+          sizeOption(1400, 1400, 'Square 1:1'),
+          sizeOption(1200, 1500, 'Portrait 4:5'),
         ],
       },
       {
@@ -95,25 +81,6 @@ export const SECTION_TYPES = {
       },
     ],
     images: { image: 'Image' },
-  },
-  twoImages: {
-    label: 'Two images',
-    description: 'Two images side by side, each with an optional caption.',
-    settings: [
-      {
-        key: 'imageSize',
-        label: 'Image size',
-        type: 'choice',
-        default: '1200x900',
-        options: [
-          sizeOption(1200, 900, 'Standard 4:3'),
-          sizeOption(1200, 800, 'Landscape 3:2'),
-          sizeOption(1200, 1200, 'Square'),
-          sizeOption(960, 1200, 'Portrait 4:5'),
-        ],
-      },
-    ],
-    images: { image1: 'Left image', image2: 'Right image' },
   },
 }
 

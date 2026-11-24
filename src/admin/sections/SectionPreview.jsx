@@ -26,19 +26,7 @@ const textLines = (
 
 const PREVIEWS = {
   text: textLines,
-  textImage: (
-    <Box sx={{ display: 'flex', gap: 1.5, height: '100%' }}>
-      {textLines}
-      {image({ flex: 1 })}
-    </Box>
-  ),
   image: image({ height: '100%' }),
-  twoImages: (
-    <Box sx={{ display: 'flex', gap: 1, height: '100%' }}>
-      {image({ flex: 1 })}
-      {image({ flex: 1 })}
-    </Box>
-  ),
 }
 
 export default function SectionPreview({ type }) {

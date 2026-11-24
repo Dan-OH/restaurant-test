@@ -4,7 +4,7 @@
  */
 
 export const TEMPLATES = {
-  basic: { label: 'Basic page', description: 'Optional hero image, heading, intro and body text.' },
+  basic: { label: 'Basic page', description: 'Starts blank. Build it from sections (text, images) in edit mode.' },
 }
 
 // Used if the pages table can't be loaded (e.g. before the database script has been run).

@@ -1,7 +1,5 @@
 import TextSection from './TextSection.jsx'
-import TextImageSection from './TextImageSection.jsx'
 import ImageSection from './ImageSection.jsx'
-import TwoImagesSection from './TwoImagesSection.jsx'
 
 /**
  * The component that renders each section type in ./types.js.
@@ -10,7 +8,5 @@ import TwoImagesSection from './TwoImagesSection.jsx'
  */
 export const SECTION_COMPONENTS = {
   text: TextSection,
-  textImage: TextImageSection,
   image: ImageSection,
-  twoImages: TwoImagesSection,
 }

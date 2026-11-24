@@ -12,7 +12,7 @@ const RichTextField = lazyWithReload(() => import('../admin/richtext/RichTextFie
 /**
  * A piece of page text that can be edited in place while edit mode is on.
  *
- *   <EditableText id="home.hero.title" as="h1">Seasonal food, made with care</EditableText>
+ *   <EditableText id="menu.title" as="h1">Menu</EditableText>
  *
  * `id` must be unique across the site; it's the key the text is saved under.
  * The children are the default text, shown until someone saves an edit.
